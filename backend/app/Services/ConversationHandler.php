@@ -1,0 +1,275 @@
+<?php
+
+namespace App\Services;
+
+use App\DataTransferObjects\AiIntentResult;
+use App\Models\Appointment;
+use App\Models\Dialog;
+use App\Models\DialogSession;
+use App\Models\Message;
+use App\Models\Notification;
+use App\Models\Service;
+use App\Models\SocialAccount;
+use App\Models\User;
+use Carbon\Carbon;
+use Illuminate\Support\Str;
+use Throwable;
+
+class ConversationHandler
+{
+    public function __construct(
+        private readonly GptunnelClient $gptunnel,
+        private readonly SlotAvailabilityService $slots,
+        private readonly VkApiService $vk,
+        private readonly ActivityLogger $activityLogger,
+    ) {}
+
+    public function handleInbound(
+        User $owner,
+        SocialAccount $vkGroupAccount,
+        Dialog $dialog,
+        DialogSession $session,
+        string $inboundText,
+        int $peerId,
+    ): void {
+        if (! $owner->canRunBot()) {
+            $this->activityLogger->log($owner, 'bot_skipped', 'Бот на паузе или недостаточно средств.', [
+                'dialog_id' => $dialog->id,
+            ]);
+
+            return;
+        }
+
+        Message::query()->create([
+            'dialog_id' => $dialog->id,
+            'dialog_session_id' => $session->id,
+            'direction' => Message::DIRECTION_INBOUND,
+            'text' => $inboundText,
+        ]);
+        $dialog->update(['last_message_at' => now()]);
+
+        $systemPrompt = $this->buildSystemPrompt();
+        $userPayload = $this->buildUserPayload($owner, $dialog, $session, $inboundText);
+
+        try {
+            $ai = $this->gptunnel->classifyMessage($systemPrompt, $userPayload);
+        } catch (Throwable $e) {
+            $this->notifyOwner($owner, 'Ошибка AI', $e->getMessage());
+            $this->activityLogger->log($owner, 'ai_error', $e->getMessage(), ['dialog_id' => $dialog->id]);
+
+            return;
+        }
+
+        $this->activityLogger->log($owner, 'ai_intent', 'Классификация: '.$ai->intent, [
+            'dialog_id' => $dialog->id,
+            'intent' => $ai->intent,
+            'confidence' => $ai->confidence,
+        ]);
+
+        $reply = $this->executeIntent($owner, $vkGroupAccount, $dialog, $session, $peerId, $ai, $inboundText);
+        if ($reply !== null && $reply !== '') {
+            $this->vk->sendGroupMessage($vkGroupAccount->access_token, $peerId, $reply);
+            Message::query()->create([
+                'dialog_id' => $dialog->id,
+                'dialog_session_id' => $session->id,
+                'direction' => Message::DIRECTION_OUTBOUND,
+                'text' => $reply,
+            ]);
+        }
+    }
+
+    private function executeIntent(
+        User $owner,
+        SocialAccount $vkGroupAccount,
+        Dialog $dialog,
+        DialogSession $session,
+        int $peerId,
+        AiIntentResult $ai,
+        string $inboundText,
+    ): ?string {
+        return match ($ai->intent) {
+            'informational' => $this->handleInformational($owner, $ai),
+            'availability_request' => $this->handleAvailability($owner, $ai),
+            'booking_confirm' => $this->handleBookingConfirm($owner, $dialog, $session, $ai),
+            'booking_cancel' => $this->handleBookingCancel($owner, $dialog, $session, $ai),
+            'chit_chat' => $ai->reply !== '' ? $ai->reply : 'Пожалуйста! Если понадобится запись — напишите.',
+            default => $this->handleOther($owner, $ai, $inboundText),
+        };
+    }
+
+    private function handleInformational(User $owner, AiIntentResult $ai): ?string
+    {
+        if ($ai->needsOwner) {
+            $this->notifyOwner($owner, 'Нужен ответ мастеру', 'Бот не уверен в ответе: '.$ai->reply);
+
+            return 'Передала вопрос мастеру, он ответит в ближайшее время.';
+        }
+
+        return $ai->reply !== '' ? $ai->reply : null;
+    }
+
+    private function handleAvailability(User $owner, AiIntentResult $ai): string
+    {
+        $service = $ai->service ? $this->slots->findServiceByTitle($owner, $ai->service) : null;
+        $suggestions = $this->slots->suggestSlots($owner, $service);
+        if ($suggestions === []) {
+            return 'Свободных окон в ближайшие дни не нашла. Напишите желаемый день — уточню у мастера.';
+        }
+        $lines = collect($suggestions)->map(fn ($s) => $s['start']->translatedFormat('j F, H:i'))->implode('; ');
+
+        return 'Могу предложить: '.$lines.'. Какой вариант вам подходит?';
+    }
+
+    private function handleBookingConfirm(
+        User $owner,
+        Dialog $dialog,
+        DialogSession $session,
+        AiIntentResult $ai,
+    ): ?string {
+        if ($ai->date === null || $ai->time === null) {
+            $this->notifyOwner($owner, 'Неполная запись', 'Клиент подтвердил запись, но нет даты/времени в AI-ответе.');
+
+            return 'Уточните, пожалуйста, дату и время записи одним сообщением.';
+        }
+        $service = $ai->service ? $this->slots->findServiceByTitle($owner, $ai->service) : Service::query()
+            ->where('user_id', $owner->id)->where('is_active', true)->orderBy('id')->first();
+        $duration = $service?->duration_minutes ?? 60;
+        $start = Carbon::parse($ai->date.' '.$ai->time);
+        $end = $start->copy()->addMinutes($duration);
+        if (! $this->slots->isSlotFree($owner, $start, $end)) {
+            return 'Это время уже занято. Предлагаю другое — напишите удобный день, я пришлю свободные слоты.';
+        }
+        $price = $service?->price_kopecks;
+        $appointment = Appointment::query()->create([
+            'user_id' => $owner->id,
+            'service_id' => $service?->id,
+            'dialog_session_id' => $session->id,
+            'client_name' => $dialog->client_name ?? 'Клиент VK',
+            'starts_at' => $start,
+            'ends_at' => $end,
+            'price_kopecks' => $price,
+            'chat_excerpt' => Str::limit($ai->reply, 500),
+            'status' => Appointment::STATUS_CONFIRMED,
+        ]);
+        $session->update(['status' => DialogSession::STATUS_CLOSED, 'closed_at' => now(), 'intent' => 'booking']);
+        $this->activityLogger->log($owner, 'appointment_created', 'Запись #'.$appointment->id, [
+            'appointment_id' => $appointment->id,
+        ]);
+
+        return 'Запись зафиксирована на '.$start->translatedFormat('j F Y, H:i').'. Ждём вас!';
+    }
+
+    private function handleBookingCancel(
+        User $owner,
+        Dialog $dialog,
+        DialogSession $session,
+        AiIntentResult $ai,
+    ): string {
+        $appointment = Appointment::query()
+            ->where('user_id', $owner->id)
+            ->where('status', Appointment::STATUS_CONFIRMED)
+            ->whereHas('dialogSession', fn ($q) => $q->where('dialog_id', $dialog->id))
+            ->where('starts_at', '>', now()->subHours(12))
+            ->orderByDesc('starts_at')
+            ->first();
+        if (! $appointment) {
+            $this->notifyOwner($owner, 'Отмена записи', 'Клиент просит отмену, но активной записи не найдено.');
+
+            return 'Не нашла активную запись на ваше имя. Если запись была — мастер свяжется с вами.';
+        }
+        $appointment->update(['status' => Appointment::STATUS_CANCELLED]);
+        $session->update(['status' => DialogSession::STATUS_CLOSED, 'closed_at' => now(), 'intent' => 'cancel']);
+        $this->activityLogger->log($owner, 'appointment_cancelled', 'Отмена #'.$appointment->id, [
+            'appointment_id' => $appointment->id,
+        ]);
+
+        return 'Запись отменена. Будем рады видеть вас в другой раз!';
+    }
+
+    private function handleOther(User $owner, AiIntentResult $ai, string $inboundText): string
+    {
+        $this->notifyOwner($owner, 'Сообщение без автоответа', Str::limit($inboundText, 400));
+
+        return 'Передала сообщение мастеру — он ответит лично.';
+    }
+
+    private function notifyOwner(User $owner, string $title, string $body): void
+    {
+        Notification::query()->create([
+            'user_id' => $owner->id,
+            'title' => $title,
+            'body' => $body,
+        ]);
+    }
+
+    private function buildSystemPrompt(): string
+    {
+        return <<<'PROMPT'
+Ты классификатор сообщений клиента мастера (маникюр, массаж и т.п.). Ответь СТРОГО одним JSON-объектом без markdown, поля:
+- intent: один из: informational, availability_request, booking_confirm, booking_cancel, chit_chat, other
+- confidence: число 0..1
+- service: string или null (краткое название услуги если применимо)
+- date: "Y-m-d" или null
+- time: "H:i" или null
+- reply: короткий черновик ответа клиенту на русском (для chit_chat/informational), иначе можно пустую строку
+- needs_owner: boolean — true если нужен мастер без данных из контекста
+
+Правила:
+- informational: вопрос о цене, услуге, адресе из контекста
+- availability_request: когда можно, свободные слоты
+- booking_confirm: явное согласие на конкретные дату и время
+- booking_cancel: отмена записи
+- chit_chat: спасибо, ок, до связи
+- other: всё остальное
+PROMPT;
+    }
+
+    private function buildUserPayload(User $owner, Dialog $dialog, DialogSession $session, string $inboundText): string
+    {
+        $services = Service::query()->where('user_id', $owner->id)->where('is_active', true)->get();
+        $servicesJson = $services->map(fn (Service $s) => [
+            'title' => $s->title,
+            'price_kopecks' => $s->price_kopecks,
+            'duration_minutes' => $s->duration_minutes,
+            'description' => $s->description,
+        ])->values()->all();
+
+        $working = $owner->workingHours()->get()->map(fn ($w) => [
+            'weekday' => $w->weekday,
+            'opens_at' => (string) $w->opens_at,
+            'closes_at' => (string) $w->closes_at,
+        ])->values()->all();
+
+        $busy = Appointment::query()
+            ->where('user_id', $owner->id)
+            ->confirmed()
+            ->where('ends_at', '>=', now()->subDay())
+            ->orderBy('starts_at')
+            ->limit(40)
+            ->get()
+            ->map(fn (Appointment $a) => [
+                'start' => $a->starts_at->toIso8601String(),
+                'end' => $a->ends_at->toIso8601String(),
+            ])->all();
+
+        $history = Message::query()
+            ->where('dialog_session_id', $session->id)
+            ->orderByDesc('id')
+            ->limit(20)
+            ->get()
+            ->reverse()
+            ->map(fn (Message $m) => [
+                'direction' => $m->direction,
+                'text' => $m->text,
+            ])->values()->all();
+
+        return json_encode([
+            'owner_services_text' => $owner->services_description,
+            'services' => $servicesJson,
+            'working_hours' => $working,
+            'busy' => $busy,
+            'history' => $history,
+            'latest_message' => $inboundText,
+        ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+    }
+}

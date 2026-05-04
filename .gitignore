@@ -1,0 +1,7 @@
+/backend/vendor
+/frontend/node_modules
+/frontend/dist
+/backend/.env
+composer.phar
+.idea
+.DS_Store

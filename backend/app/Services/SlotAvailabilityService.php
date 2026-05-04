@@ -13,9 +13,62 @@ use Illuminate\Support\Collection;
 class SlotAvailabilityService
 {
     /**
+     * Свободные слоты в пределах календарных дней [rangeStart, rangeEnd] (включительно), по порядку.
+     *
      * @return list<array{start: Carbon, end: Carbon}>
      */
-    public function suggestSlots(User $user, ?Service $service, int $daysAhead = 14, int $maxSuggestions = 6): array
+    public function suggestSlotsInDateRange(
+        User $user,
+        ?Service $service,
+        Carbon $rangeStart,
+        Carbon $rangeEnd,
+        int $maxSuggestions = 60,
+    ): array {
+        $duration = $service?->duration_minutes ?? 60;
+        $working = WorkingHour::query()->where('user_id', $user->id)->get()->groupBy('weekday');
+        $appointments = Appointment::query()
+            ->where('user_id', $user->id)
+            ->confirmed()
+            ->where('ends_at', '>=', now()->startOfDay())
+            ->orderBy('starts_at')
+            ->get();
+
+        $from = $rangeStart->copy()->startOfDay();
+        $to = $rangeEnd->copy()->startOfDay();
+        if ($from->gt($to)) {
+            [$from, $to] = [$to->copy(), $from->copy()];
+        }
+
+        $today = now()->startOfDay();
+        if ($to->lt($today)) {
+            return [];
+        }
+        if ($from->lt($today)) {
+            $from = $today->copy();
+        }
+
+        $suggestions = [];
+        $day = $from->copy();
+        while ($day->lte($to) && count($suggestions) < $maxSuggestions) {
+            $weekday = (int) $day->dayOfWeek;
+            foreach ($working->get($weekday, collect()) as $wh) {
+                foreach ($this->slotsForWorkingWindow($day, $wh, $duration, $appointments) as $slot) {
+                    if (count($suggestions) >= $maxSuggestions) {
+                        break 3;
+                    }
+                    $suggestions[] = $slot;
+                }
+            }
+            $day->addDay();
+        }
+
+        return $suggestions;
+    }
+
+    /**
+     * @return list<array{start: Carbon, end: Carbon}>
+     */
+    public function suggestSlots(User $user, ?Service $service, int $daysAhead = 14, int $maxSuggestions = 24): array
     {
         $duration = $service?->duration_minutes ?? 60;
         $working = WorkingHour::query()->where('user_id', $user->id)->get()->groupBy('weekday');
@@ -51,22 +104,25 @@ class SlotAvailabilityService
      * @param  Collection<int, Appointment>  $appointments
      * @param  list<array{start: Carbon, end: Carbon}>  $suggestions
      */
-    private function fillDaySlots(
+    /**
+     * @param  Collection<int, Appointment>  $appointments
+     * @return list<array{start: Carbon, end: Carbon}>
+     */
+    private function slotsForWorkingWindow(
         Carbon $day,
         WorkingHour $wh,
         int $durationMinutes,
         Collection $appointments,
-        array &$suggestions,
-        int $maxSuggestions
-    ): void {
+    ): array {
         $open = Carbon::parse($day->format('Y-m-d').' '.$wh->opens_at);
         $close = Carbon::parse($day->format('Y-m-d').' '.$wh->closes_at);
         if ($close->lte($open)) {
-            return;
+            return [];
         }
 
+        $slots = [];
         $cursor = $open->copy();
-        while ($cursor->copy()->addMinutes($durationMinutes)->lte($close) && count($suggestions) < $maxSuggestions) {
+        while ($cursor->copy()->addMinutes($durationMinutes)->lte($close)) {
             $slotEnd = $cursor->copy()->addMinutes($durationMinutes);
             if ($cursor->lt(now())) {
                 $cursor->addMinutes(15);
@@ -78,8 +134,30 @@ class SlotAvailabilityService
 
                 continue;
             }
-            $suggestions[] = ['start' => $cursor->copy(), 'end' => $slotEnd->copy()];
+            $slots[] = ['start' => $cursor->copy(), 'end' => $slotEnd->copy()];
             $cursor->addMinutes(30);
+        }
+
+        return $slots;
+    }
+
+    /**
+     * @param  Collection<int, Appointment>  $appointments
+     * @param  list<array{start: Carbon, end: Carbon}>  $suggestions
+     */
+    private function fillDaySlots(
+        Carbon $day,
+        WorkingHour $wh,
+        int $durationMinutes,
+        Collection $appointments,
+        array &$suggestions,
+        int $maxSuggestions
+    ): void {
+        foreach ($this->slotsForWorkingWindow($day, $wh, $durationMinutes, $appointments) as $slot) {
+            if (count($suggestions) >= $maxSuggestions) {
+                return;
+            }
+            $suggestions[] = $slot;
         }
     }
 

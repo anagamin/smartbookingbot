@@ -23,7 +23,25 @@ class AiIntentResultTest extends TestCase
         $this->assertSame(0.9, $dto->confidence);
         $this->assertSame('Маникюр', $dto->service);
         $this->assertSame('2026-05-10', $dto->date);
+        $this->assertNull($dto->dateEnd);
         $this->assertSame('14:00', $dto->time);
         $this->assertFalse($dto->needsOwner);
+    }
+
+    public function test_from_json_array_maps_date_end(): void
+    {
+        $dto = AiIntentResult::fromJsonArray([
+            'intent' => 'availability_request',
+            'confidence' => 1,
+            'service' => null,
+            'date' => '2026-05-09',
+            'date_end' => '2026-05-10',
+            'time' => null,
+            'reply' => '',
+            'needs_owner' => false,
+        ]);
+
+        $this->assertSame('2026-05-09', $dto->date);
+        $this->assertSame('2026-05-10', $dto->dateEnd);
     }
 }

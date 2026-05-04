@@ -131,13 +131,45 @@ class ConversationHandler
             return 'На '.$start->translatedFormat('j F, H:i').' свободно. Если хотите записаться — напишите, что подтверждаете это время.';
         }
 
-        $suggestions = $this->slots->suggestSlots($owner, $service);
+        $rangeEnd = $this->normalizeAiDate($ai->dateEnd) ?? $date;
+        if ($date !== null && $rangeEnd !== null && Carbon::parse($rangeEnd)->lt(Carbon::parse($date))) {
+            $rangeEnd = $date;
+        }
+
+        $suggestions = $date !== null
+            ? $this->slots->suggestSlotsInDateRange(
+                $owner,
+                $service,
+                Carbon::parse($date),
+                Carbon::parse($rangeEnd ?? $date),
+                80,
+            )
+            : $this->slots->suggestSlots($owner, $service);
+
         if ($suggestions === []) {
             return 'Свободных окон в ближайшие дни не нашла (проверьте график работы в кабинете или напишите желаемый день — уточню у мастера).';
         }
-        $lines = collect($suggestions)->map(fn ($s) => $s['start']->translatedFormat('j F, H:i'))->implode('; ');
 
-        return 'Могу предложить: '.$lines.'. Какой вариант вам подходит?';
+        return $this->formatAvailabilitySuggestions($suggestions);
+    }
+
+    /**
+     * @param  list<array{start: Carbon, end: Carbon}>  $suggestions
+     */
+    private function formatAvailabilitySuggestions(array $suggestions): string
+    {
+        $byDay = [];
+        foreach ($suggestions as $s) {
+            $key = $s['start']->toDateString();
+            $byDay[$key][] = $s['start']->format('H:i');
+        }
+        ksort($byDay);
+        $parts = [];
+        foreach ($byDay as $dateStr => $times) {
+            $parts[] = Carbon::parse($dateStr)->locale('ru')->translatedFormat('j F').': '.implode(', ', $times);
+        }
+
+        return 'Могу предложить: '.implode('; ', $parts).'. Какой вариант вам подходит?';
     }
 
     private function handleBookingConfirm(
@@ -233,13 +265,14 @@ class ConversationHandler
 - confidence: число 0..1
 - service: string или null (краткое название услуги если применимо)
 - date: "Y-m-d" или null
+- date_end: "Y-m-d" или null — последний день диапазона включительно, если речь о нескольких днях; иначе null (или то же, что date)
 - time: "H:i" или null
 - reply: короткий черновик ответа клиенту на русском (для chit_chat/informational), иначе можно пустую строку
 - needs_owner: boolean — true если нужен мастер без данных из контекста
 
 Правила:
 - informational: вопрос о цене, услуге, адресе из контекста
-- availability_request: когда можно, свободные слоты; если клиент спрашивает про конкретную дату/время («завтра в 16:00», «5 мая в 10:30») — обязательно заполни поля date (Y-m-d) и time (H:i), вычислив дату от reference.server_today (завтра = server_today + 1 день)
+- availability_request: когда можно, свободные слоты; если клиент спрашивает про конкретную дату/время («завтра в 16:00», «5 мая в 10:30») — обязательно заполни поля date (Y-m-d) и time (H:i), вычислив дату от reference.server_today (завтра = server_today + 1 день). Если указан только день или период без времени («5 мая», «в выходные», «на следующей неделе») — time=null; для одного дня date_end=null; для диапазона заполни date (первый день) и date_end (последний). «Выходные» — ближайшая суббота–воскресенье от server_today (если сегодня суббота/воскресенье — текущие выходные). «На следующей неделе» — календарная неделя после той, в которой server_today (пн–вс этой «следующей» недели).
 - booking_confirm: явное согласие на конкретные дату и время
 - booking_cancel: отмена записи
 - chit_chat: спасибо, ок, до связи

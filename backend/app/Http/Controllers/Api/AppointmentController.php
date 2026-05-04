@@ -124,6 +124,7 @@ class AppointmentController extends Controller
             'title' => $title,
             'start' => $a->starts_at->toIso8601String(),
             'end' => $a->ends_at->toIso8601String(),
+            'classNames' => $a->status === Appointment::STATUS_CANCELLED ? ['sb-event-cancelled'] : [],
             'extendedProps' => [
                 'client_name' => $a->client_name,
                 'status' => $a->status,

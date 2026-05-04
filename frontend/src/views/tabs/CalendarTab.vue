@@ -181,3 +181,17 @@ onMounted(loadServices)
     </div>
   </div>
 </template>
+
+<style scoped>
+:deep(.sb-event-cancelled) {
+  opacity: 0.4 !important;
+  background-color: #cbd5e1 !important;
+  border-color: #94a3b8 !important;
+  color: #64748b !important;
+  font-weight: 400 !important;
+  box-shadow: none !important;
+}
+:deep(.sb-event-cancelled .fc-event-title) {
+  font-style: italic;
+}
+</style>

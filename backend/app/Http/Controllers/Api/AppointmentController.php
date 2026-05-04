@@ -34,9 +34,16 @@ class AppointmentController extends Controller
 
     public function store(Request $request)
     {
+        $hasActiveServices = Service::query()
+            ->where('user_id', $request->user()->id)
+            ->where('is_active', true)
+            ->exists();
+
         $data = $request->validate([
             'client_name' => ['required', 'string', 'max:255'],
-            'service_id' => ['nullable', 'exists:services,id'],
+            'service_id' => $hasActiveServices
+                ? ['required', 'integer', 'exists:services,id']
+                : ['nullable', 'integer', 'exists:services,id'],
             'starts_at' => ['required', 'date'],
             'ends_at' => ['required', 'date', 'after:starts_at'],
             'price_kopecks' => ['nullable', 'integer', 'min:0'],
@@ -87,6 +94,14 @@ class AppointmentController extends Controller
         ]);
 
         $this->validateServiceOwnership($request, $data['service_id'] ?? $appointment->service_id);
+
+        $hasActiveServices = Service::query()
+            ->where('user_id', $request->user()->id)
+            ->where('is_active', true)
+            ->exists();
+        if ($hasActiveServices && array_key_exists('service_id', $data) && ($data['service_id'] ?? null) === null) {
+            return response()->json(['message' => 'Укажите услугу.'], 422);
+        }
 
         if (isset($data['starts_at']) || isset($data['ends_at'])) {
             $start = Carbon::parse($data['starts_at'] ?? $appointment->starts_at);
@@ -140,6 +155,7 @@ class AppointmentController extends Controller
         return [
             'id' => $a->id,
             'client_name' => $a->client_name,
+            'service_id' => $a->service_id,
             'starts_at' => $a->starts_at->toIso8601String(),
             'ends_at' => $a->ends_at->toIso8601String(),
             'status' => $a->status,

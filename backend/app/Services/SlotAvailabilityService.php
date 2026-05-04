@@ -218,15 +218,65 @@ class SlotAvailabilityService
     public function findServiceByTitle(User $user, string $title): ?Service
     {
         $needle = mb_strtolower(trim($title));
+        if ($needle === '') {
+            return null;
+        }
 
-        return Service::query()
+        $candidates = Service::query()
             ->where('user_id', $user->id)
             ->where('is_active', true)
-            ->get()
-            ->first(function (Service $s) use ($needle) {
-                return mb_strtolower($s->title) === $needle
-                    || str_contains(mb_strtolower($s->title), $needle)
-                    || str_contains($needle, mb_strtolower($s->title));
-            });
+            ->get();
+
+        $exact = $candidates->first(fn (Service $s) => mb_strtolower($s->title) === $needle);
+        if ($exact !== null) {
+            return $exact;
+        }
+
+        $partial = $candidates->filter(function (Service $s) use ($needle) {
+            $t = mb_strtolower($s->title);
+
+            return str_contains($t, $needle) || str_contains($needle, $t);
+        });
+
+        return $partial->sortByDesc(fn (Service $s) => mb_strlen($s->title))->first();
+    }
+
+    /**
+     * Ищет услугу по фразам и отдельным словам из переписки (клиент редко пишет название целиком как в прайсе).
+     */
+    public function findServiceInDialogText(User $user, string $text): ?Service
+    {
+        $text = trim($text);
+        if ($text === '') {
+            return null;
+        }
+
+        foreach (preg_split('/\R+/u', $text) as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+            $hit = $this->findServiceByTitle($user, $line);
+            if ($hit !== null) {
+                return $hit;
+            }
+        }
+
+        $lower = mb_strtolower($text);
+        $words = preg_split('/[^\p{L}\p{N}]+/u', $lower, -1, PREG_SPLIT_NO_EMPTY);
+        $words = array_values(array_unique($words));
+        usort($words, fn (string $a, string $b) => mb_strlen($b) <=> mb_strlen($a));
+
+        foreach ($words as $w) {
+            if (mb_strlen($w) < 3) {
+                continue;
+            }
+            $hit = $this->findServiceByTitle($user, $w);
+            if ($hit !== null) {
+                return $hit;
+            }
+        }
+
+        return null;
     }
 }

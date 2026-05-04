@@ -43,5 +43,21 @@ class AiIntentResultTest extends TestCase
 
         $this->assertSame('2026-05-09', $dto->date);
         $this->assertSame('2026-05-10', $dto->dateEnd);
+        $this->assertNull($dto->service);
+    }
+
+    public function test_from_json_array_reads_service_title_alias(): void
+    {
+        $dto = AiIntentResult::fromJsonArray([
+            'intent' => 'booking_confirm',
+            'confidence' => 1,
+            'service_title' => '  Педикюр  ',
+            'date' => '2026-05-10',
+            'time' => '12:00',
+            'reply' => '',
+            'needs_owner' => false,
+        ]);
+
+        $this->assertSame('Педикюр', $dto->service);
     }
 }

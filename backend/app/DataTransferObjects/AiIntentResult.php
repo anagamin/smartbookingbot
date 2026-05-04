@@ -19,10 +19,22 @@ final class AiIntentResult
     {
         $dateEnd = $data['date_end'] ?? $data['dateEnd'] ?? null;
 
+        $service = null;
+        foreach (['service', 'service_title', 'service_name'] as $key) {
+            if (! array_key_exists($key, $data)) {
+                continue;
+            }
+            $v = $data[$key];
+            if (is_string($v) && trim($v) !== '') {
+                $service = trim($v);
+                break;
+            }
+        }
+
         return new self(
             intent: (string) ($data['intent'] ?? 'other'),
             confidence: (float) ($data['confidence'] ?? 0),
-            service: isset($data['service']) ? (string) $data['service'] : null,
+            service: $service,
             date: isset($data['date']) ? (string) $data['date'] : null,
             dateEnd: is_string($dateEnd) && $dateEnd !== '' ? $dateEnd : null,
             time: isset($data['time']) && $data['time'] !== null ? (string) $data['time'] : null,

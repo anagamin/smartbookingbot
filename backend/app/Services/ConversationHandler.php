@@ -291,11 +291,9 @@ class ConversationHandler
             ->implode("\n");
 
         if ($corpus !== '') {
-            foreach ($active as $service) {
-                $titleLower = mb_strtolower($service->title);
-                if ($titleLower !== '' && str_contains($corpus, $titleLower)) {
-                    return $service;
-                }
+            $fromDialog = $this->slots->findServiceInDialogText($owner, $corpus);
+            if ($fromDialog !== null) {
+                return $fromDialog;
             }
         }
 

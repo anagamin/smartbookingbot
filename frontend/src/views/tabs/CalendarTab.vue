@@ -63,7 +63,7 @@ async function onEventClick(arg: { event: { id: string } }) {
   const { data } = await http.get(`/appointments/${editId.value}`)
   form.value = {
     client_name: data.client_name,
-    service_id: data.service_id,
+    service_id: data.service_id ?? data.service?.id ?? null,
     starts_at: data.starts_at.slice(0, 16),
     ends_at: data.ends_at.slice(0, 16),
     price_kopecks: data.price_kopecks ?? '',

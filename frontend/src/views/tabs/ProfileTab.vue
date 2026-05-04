@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import http from '@/api/http'
+import axios from 'axios'
 import { onMounted, ref } from 'vue'
 
 const name = ref('')
@@ -11,6 +12,7 @@ const vkToken = ref('')
 const vkSecret = ref('')
 const vkConfirm = ref('')
 const msg = ref('')
+const msgIsError = ref(false)
 
 async function load() {
   const u = await http.get('/user')
@@ -27,24 +29,48 @@ async function load() {
 
 async function saveProfile() {
   msg.value = ''
-  await http.patch('/profile', {
-    name: name.value,
-    sex: sex.value || null,
-    services_description: services_description.value,
-  })
-  msg.value = 'Сохранено'
+  msgIsError.value = false
+  try {
+    await http.patch('/profile', {
+      name: name.value,
+      sex: sex.value || null,
+      services_description: services_description.value,
+    })
+    msg.value = 'Сохранено'
+  } catch (e: unknown) {
+    msgIsError.value = true
+    msg.value = axios.isAxiosError(e)
+      ? String((e.response?.data as { message?: string })?.message || e.message || 'Ошибка сохранения')
+      : 'Ошибка сохранения'
+  }
 }
 
 async function saveVkGroup() {
   msg.value = ''
-  await http.post('/vk/group', {
-    group_id: vkGroupId.value,
-    access_token: vkToken.value,
-    callback_secret: vkSecret.value,
-    confirmation_code: vkConfirm.value,
-  })
-  msg.value = 'VK-сообщество сохранено. Callback URL: ' + window.location.origin + '/api/webhooks/vk'
-  vkToken.value = ''
+  msgIsError.value = false
+  try {
+    await http.post('/vk/group', {
+      group_id: vkGroupId.value.trim(),
+      access_token: vkToken.value.trim(),
+      callback_secret: vkSecret.value.trim(),
+      confirmation_code: vkConfirm.value.trim(),
+    })
+    msg.value = 'VK-сообщество сохранено. Callback URL: ' + window.location.origin + '/api/webhooks/vk'
+    vkToken.value = ''
+  } catch (e: unknown) {
+    msgIsError.value = true
+    if (axios.isAxiosError(e) && e.response?.status === 422) {
+      const body = e.response.data as { errors?: Record<string, string[]>; message?: string }
+      const flat = body.errors ? Object.values(body.errors).flat().join(' ') : ''
+      msg.value = flat || body.message || 'Проверьте поля формы (group_id, токен, секрет, строка подтверждения).'
+    } else if (axios.isAxiosError(e) && e.response?.status === 419) {
+      msg.value = 'Сессия CSRF устарела — обновите страницу и попробуйте снова.'
+    } else if (axios.isAxiosError(e)) {
+      msg.value = String((e.response?.data as { message?: string })?.message || e.message || 'Не удалось сохранить')
+    } else {
+      msg.value = 'Не удалось сохранить'
+    }
+  }
 }
 
 async function startVkLink() {
@@ -63,7 +89,7 @@ onMounted(load)
 <template>
   <div class="max-w-2xl space-y-8">
     <h2 class="text-xl font-semibold text-white">Профиль</h2>
-    <p v-if="msg" class="text-sm text-emerald-400">
+    <p v-if="msg" class="text-sm" :class="msgIsError ? 'text-red-400' : 'text-emerald-400'">
       {{ msg }}
     </p>
     <form class="space-y-4 rounded-xl border border-white/10 bg-slate-900/40 p-6" @submit.prevent="saveProfile">

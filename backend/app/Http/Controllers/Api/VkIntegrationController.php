@@ -31,7 +31,7 @@ class VkIntegrationController extends Controller
             'group_id' => ['required', 'string', 'max:32'],
             'access_token' => ['required', 'string'],
             'callback_secret' => ['required', 'string', 'max:255'],
-            'confirmation_code' => ['required', 'string', 'max:64'],
+            'confirmation_code' => ['required', 'string', 'max:512'],
         ]);
 
         SocialAccount::query()->updateOrCreate(

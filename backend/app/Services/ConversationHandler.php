@@ -12,6 +12,7 @@ use App\Models\Service;
 use App\Models\SocialAccount;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -184,9 +185,22 @@ class ConversationHandler
 
             return 'Уточните, пожалуйста, дату и время записи одним сообщением.';
         }
-        $service = $ai->service ? $this->slots->findServiceByTitle($owner, $ai->service) : Service::query()
-            ->where('user_id', $owner->id)->where('is_active', true)->orderBy('id')->first();
-        $duration = $service?->duration_minutes ?? 60;
+        $service = $this->resolveServiceForBooking($owner, $session, $ai);
+        if ($service === null) {
+            $active = Service::query()
+                ->where('user_id', $owner->id)
+                ->where('is_active', true)
+                ->orderBy('title')
+                ->get();
+            if ($active->isEmpty()) {
+                $this->notifyOwner($owner, 'Запись через бота', 'Клиент подтвердил время, но у вас нет активных услуг в кабинете.');
+
+                return 'Сейчас запись через бот недоступна: в кабинете не настроены услуги. Мастер ответит вам в этом чате.';
+            }
+
+            return $this->buildAskServiceMessage($active);
+        }
+        $duration = max(1, (int) $service->duration_minutes);
         $start = Carbon::parse($resolvedDate.' '.$ai->time);
         $end = $start->copy()->addMinutes($duration);
         if (! $this->slots->isIntervalWithinWorkingHours($owner, $start, $end)) {
@@ -195,10 +209,10 @@ class ConversationHandler
         if (! $this->slots->isSlotFree($owner, $start, $end)) {
             return 'Это время уже занято. Предлагаю другое — напишите удобный день, я пришлю свободные слоты.';
         }
-        $price = $service?->price_kopecks;
+        $price = $service->price_kopecks;
         $appointment = Appointment::query()->create([
             'user_id' => $owner->id,
-            'service_id' => $service?->id,
+            'service_id' => $service->id,
             'dialog_session_id' => $session->id,
             'client_name' => $dialog->client_name ?? 'Клиент VK',
             'starts_at' => $start,
@@ -241,6 +255,83 @@ class ConversationHandler
         return 'Запись отменена. Будем рады видеть вас в другой раз!';
     }
 
+    /**
+     * Услуга обязательна: из поля AI, из текста сессии (история чата) или одна активная услуга в кабинете.
+     */
+    private function resolveServiceForBooking(User $owner, DialogSession $session, AiIntentResult $ai): ?Service
+    {
+        $active = Service::query()
+            ->where('user_id', $owner->id)
+            ->where('is_active', true)
+            ->get()
+            ->sortByDesc(fn (Service $s) => mb_strlen($s->title))
+            ->values();
+
+        if ($active->isEmpty()) {
+            return null;
+        }
+
+        if ($active->count() === 1) {
+            return $active->first();
+        }
+
+        $aiService = $ai->service !== null && trim($ai->service) !== '' ? trim($ai->service) : null;
+        if ($aiService !== null) {
+            $byTitle = $this->slots->findServiceByTitle($owner, $aiService);
+            if ($byTitle !== null) {
+                return $byTitle;
+            }
+        }
+
+        $corpus = Message::query()
+            ->where('dialog_session_id', $session->id)
+            ->orderBy('id')
+            ->pluck('text')
+            ->map(fn (string $t) => mb_strtolower($t))
+            ->implode("\n");
+
+        if ($corpus !== '') {
+            foreach ($active as $service) {
+                $titleLower = mb_strtolower($service->title);
+                if ($titleLower !== '' && str_contains($corpus, $titleLower)) {
+                    return $service;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  Collection<int, Service>  $active
+     */
+    private function buildAskServiceMessage(Collection $active): string
+    {
+        $parts = $active->map(
+            fn (Service $s) => $s->title.' ('.$this->formatDurationHuman((int) $s->duration_minutes).')',
+        )->implode('; ');
+
+        return 'Чтобы зафиксировать запись, напишите услугу — от неё зависит длительность. Доступно: '.$parts.'. Например: «подтверждаю, маникюр, это время».';
+    }
+
+    private function formatDurationHuman(int $minutes): string
+    {
+        if ($minutes < 60) {
+            return $minutes.' мин';
+        }
+        $h = intdiv($minutes, 60);
+        $m = $minutes % 60;
+        $chunks = [];
+        if ($h > 0) {
+            $chunks[] = $h.' ч';
+        }
+        if ($m > 0) {
+            $chunks[] = $m.' мин';
+        }
+
+        return $chunks === [] ? $minutes.' мин' : implode(' ', $chunks);
+    }
+
     private function handleOther(User $owner, AiIntentResult $ai, string $inboundText): string
     {
         $this->notifyOwner($owner, 'Сообщение без автоответа', Str::limit($inboundText, 400));
@@ -273,7 +364,7 @@ class ConversationHandler
 Правила:
 - informational: вопрос о цене, услуге, адресе из контекста
 - availability_request: когда можно, свободные слоты; если клиент спрашивает про конкретную дату/время («завтра в 16:00», «5 мая в 10:30») — обязательно заполни поля date (Y-m-d) и time (H:i), вычислив дату от reference.server_today (завтра = server_today + 1 день). Если указан только день или период без времени («5 мая», «в выходные», «на следующей неделе») — time=null; для одного дня date_end=null; для диапазона заполни date (первый день) и date_end (последний). «Выходные» — ближайшая суббота–воскресенье от server_today (если сегодня суббота/воскресенье — текущие выходные). «На следующей неделе» — календарная неделя после той, в которой server_today (пн–вс этой «следующей» недели).
-- booking_confirm: явное согласие на конкретные дату и время
+- booking_confirm: явное согласие на конкретные дату и время; поле service — точное или узнаваемое название одной из записей из массива services (по latest_message и history). Если услугу нельзя однозначно сопоставить с одной позицией из services — service: null (клиенту уточнят в чате).
 - booking_cancel: отмена записи
 - chit_chat: спасибо, ок, до связи
 - other: всё остальное

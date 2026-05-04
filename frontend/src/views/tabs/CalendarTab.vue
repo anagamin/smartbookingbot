@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { CalendarOptions, EventInput, EventSourceFuncArg } from '@fullcalendar/core'
+import ruLocale from '@fullcalendar/core/locales/ru'
 import http from '@/api/http'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
@@ -101,7 +102,9 @@ const calendarOptions: CalendarOptions = {
     center: 'title',
     right: 'dayGridMonth,timeGridWeek',
   },
+  locales: [ruLocale],
   locale: 'ru',
+  timeZone: 'Europe/Moscow',
   height: 'auto',
   slotMinTime: '08:00:00',
   slotMaxTime: '22:00:00',

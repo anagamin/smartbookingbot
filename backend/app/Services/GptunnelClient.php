@@ -26,6 +26,11 @@ class GptunnelClient
             'temperature' => 0.2,
         ];
 
+        Log::info('gptunnel_chat_request', [
+            'url' => $cfg['base_url'].'/chat/completions',
+            'payload' => $basePayload,
+        ]);
+
         $response = Http::timeout(60)
             ->withToken($apiKey)
             ->acceptJson()
@@ -44,6 +49,12 @@ class GptunnelClient
             Log::warning('gptunnel_error', ['status' => $response->status(), 'body' => $response->body()]);
             throw new RuntimeException('GPT request failed: '.$response->status());
         }
+
+        $responseJson = $response->json();
+        Log::info('gptunnel_chat_response', [
+            'status' => $response->status(),
+            'body' => $responseJson,
+        ]);
 
         $content = $response->json('choices.0.message.content');
         if (! is_string($content) || $content === '') {

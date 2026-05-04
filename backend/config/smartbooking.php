@@ -4,7 +4,7 @@ return [
     'subscription_price_kopecks' => (int) env('SUBSCRIPTION_PRICE_KOPECKS', 100_000),
     'trial_days' => (int) env('TRIAL_DAYS', 30),
     'gptunnel' => [
-        'base_url' => rtrim(env('GPTUNNEL_BASE_URL', 'https://api.gptunnel.ru/v1'), '/'),
+        'base_url' => rtrim(env('GPTUNNEL_BASE_URL', 'https://gptunnel.ru/v1'), '/'),
         'api_key' => env('GPTUNNEL_API_KEY', ''),
         'model' => env('GPTUNNEL_MODEL', 'gpt-4.1-mini'),
     ],

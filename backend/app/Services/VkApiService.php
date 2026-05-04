@@ -33,4 +33,38 @@ class VkApiService
 
         return true;
     }
+
+    public function getUserDisplayName(string $accessToken, int $userId): ?string
+    {
+        $response = Http::asForm()->timeout(15)->get('https://api.vk.com/method/users.get', [
+            'access_token' => $accessToken,
+            'user_ids' => $userId,
+            'lang' => 0,
+            'v' => '5.199',
+        ]);
+
+        if (! $response->successful()) {
+            Log::warning('vk_users_get_http', ['status' => $response->status()]);
+
+            return null;
+        }
+
+        $data = $response->json();
+        if (isset($data['error'])) {
+            Log::warning('vk_users_get_error', $data['error']);
+
+            return null;
+        }
+
+        $user = $data['response'][0] ?? null;
+        if (! is_array($user)) {
+            return null;
+        }
+
+        $first = trim((string) ($user['first_name'] ?? ''));
+        $last = trim((string) ($user['last_name'] ?? ''));
+        $name = trim($first.' '.$last);
+
+        return $name !== '' ? $name : null;
+    }
 }

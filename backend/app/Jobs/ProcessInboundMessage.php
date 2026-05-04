@@ -9,6 +9,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\VkProcessedEvent;
 use App\Services\ConversationHandler;
+use App\Services\VkApiService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -29,9 +30,9 @@ class ProcessInboundMessage implements ShouldQueue
         public readonly string $idempotencyKey,
     ) {}
 
-    public function handle(ConversationHandler $handler): void
+    public function handle(ConversationHandler $handler, VkApiService $vk): void
     {
-        DB::transaction(function () use ($handler) {
+        DB::transaction(function () use ($handler, $vk) {
             $marker = VkProcessedEvent::query()->firstOrCreate(
                 [
                     'vk_group_id' => $this->vkGroupId,
@@ -64,6 +65,12 @@ class ProcessInboundMessage implements ShouldQueue
                     'last_message_at' => now(),
                 ]
             );
+
+            $displayName = $vk->getUserDisplayName($account->access_token, $this->fromId);
+            if ($displayName !== null && $dialog->client_name !== $displayName) {
+                $dialog->update(['client_name' => $displayName]);
+                $dialog->refresh();
+            }
 
             $session = $this->resolveSession($dialog);
             $handler->handleInbound($owner, $account, $dialog, $session, $this->text, $this->peerId);

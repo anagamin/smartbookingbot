@@ -111,9 +111,29 @@ class ConversationHandler
     private function handleAvailability(User $owner, AiIntentResult $ai): string
     {
         $service = $ai->service ? $this->slots->findServiceByTitle($owner, $ai->service) : null;
+        $duration = $service?->duration_minutes ?? 60;
+        $date = $this->normalizeAiDate($ai->date);
+        $time = $ai->time !== null && $ai->time !== '' ? $ai->time : null;
+
+        if ($date !== null && $time !== null) {
+            $start = Carbon::parse($date.' '.$time);
+            $end = $start->copy()->addMinutes($duration);
+            if ($end->lte(now())) {
+                return 'Это время уже прошло. Напишите актуальную дату и время.';
+            }
+            if (! $this->slots->isIntervalWithinWorkingHours($owner, $start, $end)) {
+                return 'В это время по графику мастер не принимает. Могу прислать свободные окна в рабочие часы — напишите день недели или «сегодня»/«завтра».';
+            }
+            if (! $this->slots->isSlotFree($owner, $start, $end)) {
+                return 'На '.$start->translatedFormat('j F, H:i').' уже есть запись. Могу предложить другие слоты — напишите удобный день.';
+            }
+
+            return 'На '.$start->translatedFormat('j F, H:i').' свободно. Если хотите записаться — напишите, что подтверждаете это время.';
+        }
+
         $suggestions = $this->slots->suggestSlots($owner, $service);
         if ($suggestions === []) {
-            return 'Свободных окон в ближайшие дни не нашла. Напишите желаемый день — уточню у мастера.';
+            return 'Свободных окон в ближайшие дни не нашла (проверьте график работы в кабинете или напишите желаемый день — уточню у мастера).';
         }
         $lines = collect($suggestions)->map(fn ($s) => $s['start']->translatedFormat('j F, H:i'))->implode('; ');
 
@@ -126,7 +146,8 @@ class ConversationHandler
         DialogSession $session,
         AiIntentResult $ai,
     ): ?string {
-        if ($ai->date === null || $ai->time === null) {
+        $resolvedDate = $this->normalizeAiDate($ai->date);
+        if ($resolvedDate === null || $ai->time === null || $ai->time === '') {
             $this->notifyOwner($owner, 'Неполная запись', 'Клиент подтвердил запись, но нет даты/времени в AI-ответе.');
 
             return 'Уточните, пожалуйста, дату и время записи одним сообщением.';
@@ -134,8 +155,11 @@ class ConversationHandler
         $service = $ai->service ? $this->slots->findServiceByTitle($owner, $ai->service) : Service::query()
             ->where('user_id', $owner->id)->where('is_active', true)->orderBy('id')->first();
         $duration = $service?->duration_minutes ?? 60;
-        $start = Carbon::parse($ai->date.' '.$ai->time);
+        $start = Carbon::parse($resolvedDate.' '.$ai->time);
         $end = $start->copy()->addMinutes($duration);
+        if (! $this->slots->isIntervalWithinWorkingHours($owner, $start, $end)) {
+            return 'Это время вне графика работы. Выберите другое время в рабочие часы или напишите день — пришлю свободные окна.';
+        }
         if (! $this->slots->isSlotFree($owner, $start, $end)) {
             return 'Это время уже занято. Предлагаю другое — напишите удобный день, я пришлю свободные слоты.';
         }
@@ -169,7 +193,6 @@ class ConversationHandler
             ->where('user_id', $owner->id)
             ->where('status', Appointment::STATUS_CONFIRMED)
             ->whereHas('dialogSession', fn ($q) => $q->where('dialog_id', $dialog->id))
-            ->where('starts_at', '>', now()->subHours(12))
             ->orderByDesc('starts_at')
             ->first();
         if (! $appointment) {
@@ -216,11 +239,13 @@ class ConversationHandler
 
 Правила:
 - informational: вопрос о цене, услуге, адресе из контекста
-- availability_request: когда можно, свободные слоты
+- availability_request: когда можно, свободные слоты; если клиент спрашивает про конкретную дату/время («завтра в 16:00», «5 мая в 10:30») — обязательно заполни поля date (Y-m-d) и time (H:i), вычислив дату от reference.server_today (завтра = server_today + 1 день)
 - booking_confirm: явное согласие на конкретные дату и время
 - booking_cancel: отмена записи
 - chit_chat: спасибо, ок, до связи
 - other: всё остальное
+
+Важно для date: год всегда бери из reference.current_year, если клиент год не указал явно. Не используй прошлые годы (2024 и т.д.), если речь о ближайшей записи.
 PROMPT;
     }
 
@@ -264,6 +289,11 @@ PROMPT;
             ])->values()->all();
 
         return json_encode([
+            'reference' => [
+                'server_today' => now()->toDateString(),
+                'current_year' => (int) now()->year,
+                'timezone' => config('app.timezone'),
+            ],
             'owner_services_text' => $owner->services_description,
             'services' => $servicesJson,
             'working_hours' => $working,
@@ -271,5 +301,31 @@ PROMPT;
             'history' => $history,
             'latest_message' => $inboundText,
         ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+    }
+
+    private function normalizeAiDate(?string $date): ?string
+    {
+        if ($date === null || $date === '') {
+            return null;
+        }
+
+        try {
+            $parsed = Carbon::parse($date)->startOfDay();
+        } catch (Throwable) {
+            return null;
+        }
+
+        $today = now()->startOfDay();
+        $y = (int) $today->year;
+
+        if ($parsed->year < $y) {
+            $parsed->setYear($y);
+        }
+
+        for ($i = 0; $i < 4 && $parsed->lt($today); $i++) {
+            $parsed->addYear();
+        }
+
+        return $parsed->toDateString();
     }
 }

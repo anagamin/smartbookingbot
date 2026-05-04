@@ -113,6 +113,30 @@ class SlotAvailabilityService
         return ! $q->exists();
     }
 
+    public function isIntervalWithinWorkingHours(User $user, Carbon $start, Carbon $end): bool
+    {
+        $weekday = (int) $start->dayOfWeek;
+        $rows = WorkingHour::query()
+            ->where('user_id', $user->id)
+            ->where('weekday', $weekday)
+            ->get();
+        if ($rows->isEmpty()) {
+            return false;
+        }
+        foreach ($rows as $wh) {
+            $open = Carbon::parse($start->format('Y-m-d').' '.$wh->opens_at);
+            $close = Carbon::parse($start->format('Y-m-d').' '.$wh->closes_at);
+            if ($close->lte($open)) {
+                continue;
+            }
+            if ($start->gte($open) && $end->lte($close)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function findServiceByTitle(User $user, string $title): ?Service
     {
         $needle = mb_strtolower(trim($title));

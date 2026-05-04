@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import http from '@/api/http'
-import { onMounted, ref } from 'vue'
+import { inject, onMounted, ref } from 'vue'
 
 const items = ref<Array<{ id: number; title: string; body: string | null; read_at: string | null; created_at: string }>>([])
+
+const refreshCabinetUnread = inject<() => Promise<void>>('refreshCabinetUnread', async () => {})
 
 async function load() {
   const { data } = await http.get('/notifications')
@@ -12,6 +14,7 @@ async function load() {
 async function markRead(id: number) {
   await http.patch(`/notifications/${id}/read`)
   await load()
+  await refreshCabinetUnread()
 }
 
 onMounted(load)

@@ -56,6 +56,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/activity-logs/{activityLog}/read', [ActivityLogController::class, 'markRead']);
 
     Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/notifications/unread-snapshot', [NotificationController::class, 'unreadSnapshot']);
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
 
     Route::get('/billing/transactions', [BillingController::class, 'transactions']);

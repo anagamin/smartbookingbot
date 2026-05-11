@@ -16,7 +16,11 @@ class OAuthController extends Controller
         $userId = $request->user()?->id;
         $data = $vk->startPkce($userId);
 
-        return response()->json($data);
+        if ($request->expectsJson()) {
+            return response()->json($data);
+        }
+
+        return redirect()->away($data['url']);
     }
 
     public function vkCallback(Request $request, VkIdOAuthService $vk)
@@ -42,8 +46,13 @@ class OAuthController extends Controller
     public function yandexStart(Request $request, YandexOAuthService $yandex)
     {
         $userId = $request->user()?->id;
+        $data = $yandex->start($userId);
 
-        return response()->json($yandex->start($userId));
+        if ($request->expectsJson()) {
+            return response()->json($data);
+        }
+
+        return redirect()->away($data['url']);
     }
 
     public function yandexCallback(Request $request, YandexOAuthService $yandex)

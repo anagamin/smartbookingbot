@@ -30,7 +30,7 @@ class VkIdOAuthService
             'response_type' => 'code',
             'client_id' => $cfg['client_id'],
             'redirect_uri' => $cfg['redirect_uri'],
-            'scope' => 'openid email vkid.personal_info',
+            'scope' => 'vkid.personal_info email',
             'state' => $state,
             'code_challenge' => $challenge,
             'code_challenge_method' => 'S256',
@@ -41,7 +41,7 @@ class VkIdOAuthService
         return ['url' => $url, 'state' => $state];
     }
 
-    public function handleCallback(string $code, string $state): User
+    public function handleCallback(string $code, string $state, string $deviceId): User
     {
         $row = OauthPkceState::query()->where('state', $state)->where('expires_at', '>', now())->first();
         if (! $row) {
@@ -57,8 +57,9 @@ class VkIdOAuthService
             'code' => $code,
             'redirect_uri' => $cfg['redirect_uri'],
             'client_id' => $cfg['client_id'],
-            'client_secret' => $cfg['client_secret'],
             'code_verifier' => $codeVerifier,
+            'device_id' => $deviceId,
+            'state' => $state,
         ]);
 
         if (! $response->successful()) {
@@ -72,9 +73,13 @@ class VkIdOAuthService
             throw new RuntimeException('Missing access_token');
         }
 
-        $userInfo = Http::timeout(15)
-            ->withToken($accessToken)
-            ->get('https://id.vk.com/oauth2/user_info')
+        $userInfoUrl = $cfg['user_info_url'] ?? 'https://id.vk.ru/oauth2/user_info';
+        $userInfo = Http::asForm()
+            ->timeout(15)
+            ->post($userInfoUrl, [
+                'client_id' => $cfg['client_id'],
+                'access_token' => $accessToken,
+            ])
             ->json();
 
         $vkNumericId = $userInfo['user']['user_id'] ?? $userInfo['user']['id'] ?? null;
@@ -96,7 +101,7 @@ class VkIdOAuthService
                     'access_token' => $accessToken,
                     'refresh_token' => $response->json('refresh_token'),
                     'expires_at' => now()->addSeconds((int) ($response->json('expires_in') ?? 3600)),
-                    'scopes' => 'openid',
+                    'scopes' => 'vkid.personal_info email',
                 ]
             );
 
@@ -138,7 +143,7 @@ class VkIdOAuthService
             'access_token' => $accessToken,
             'refresh_token' => $response->json('refresh_token'),
             'expires_at' => now()->addSeconds((int) ($response->json('expires_in') ?? 3600)),
-            'scopes' => 'openid',
+            'scopes' => 'vkid.personal_info email',
         ]);
 
         return $user;

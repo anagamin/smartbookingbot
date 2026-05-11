@@ -18,8 +18,9 @@ return [
         'client_id' => env('VK_ID_CLIENT_ID'),
         'client_secret' => env('VK_ID_CLIENT_SECRET'),
         'redirect_uri' => env('VK_ID_REDIRECT_URI') ?: $oauthCallbackPath('vk'),
-        'authorize_url' => env('VK_ID_AUTHORIZE_URL', 'https://id.vk.com/authorize'),
-        'token_url' => env('VK_ID_TOKEN_URL', 'https://id.vk.com/oauth2/token'),
+        'authorize_url' => env('VK_ID_AUTHORIZE_URL', 'https://id.vk.ru/authorize'),
+        'token_url' => env('VK_ID_TOKEN_URL', 'https://id.vk.ru/oauth2/auth'),
+        'user_info_url' => env('VK_ID_USER_INFO_URL', 'https://id.vk.ru/oauth2/user_info'),
     ],
     'yandex' => [
         'client_id' => env('YANDEX_CLIENT_ID'),

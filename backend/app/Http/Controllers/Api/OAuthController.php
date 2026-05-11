@@ -28,10 +28,15 @@ class OAuthController extends Controller
         $request->validate([
             'code' => ['required', 'string'],
             'state' => ['required', 'string'],
+            'device_id' => ['required', 'string'],
         ]);
 
         try {
-            $user = $vk->handleCallback($request->query('code'), $request->query('state'));
+            $user = $vk->handleCallback(
+                $request->query('code'),
+                $request->query('state'),
+                $request->query('device_id')
+            );
         } catch (RuntimeException $e) {
             Log::warning('vk_oauth_failed', ['e' => $e->getMessage()]);
 

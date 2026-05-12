@@ -73,16 +73,6 @@ class AuthController extends Controller
 
     private function userPayload(User $user): array
     {
-        return [
-            'id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'sex' => $user->sex,
-            'balance_kopecks' => $user->balance_kopecks,
-            'trial_ends_at' => $user->trial_ends_at?->toIso8601String(),
-            'next_billing_at' => $user->next_billing_at?->toIso8601String(),
-            'bot_paused' => $user->bot_paused,
-            'services_description' => $user->services_description,
-        ];
+        return $user->cabinetPayload();
     }
 }

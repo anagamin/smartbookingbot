@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import http from '@/api/http'
 import axios from 'axios'
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const name = ref('')
 const sex = ref('')
@@ -9,6 +9,28 @@ const services_description = ref('')
 const socials = ref<Array<{ id: number; provider: string }>>([])
 const msg = ref('')
 const msgIsError = ref(false)
+
+const reloadCabinetUser = inject<(() => Promise<void>) | undefined>('reloadCabinetUser', undefined)
+
+const botPaused = ref(true)
+const subscriptionActive = ref(false)
+const botToggleLoading = ref(false)
+const botToggleMsg = ref('')
+const botToggleMsgIsError = ref(false)
+
+const botSwitchDisabled = computed(
+  () => botToggleLoading.value || (botPaused.value && !subscriptionActive.value),
+)
+
+const botStatusLine = computed(() => {
+  if (!botPaused.value) {
+    return 'Бот отвечает клиентам в сообщениях сообщества.'
+  }
+  if (!subscriptionActive.value) {
+    return 'Чтобы снова включить бота, нужна активная подписка или триальный период (пополните баланс на сумму абонемента).'
+  }
+  return 'Бот не отвечает. Включите переключатель, когда будете готовы.'
+})
 
 const vkAccessToken = ref('')
 const vkGroupId = ref('')
@@ -65,13 +87,55 @@ async function loadVkGroup(): Promise<void> {
 }
 
 async function load(): Promise<void> {
-  const u = await http.get('/user')
+  const u = await http.get<{
+    name: string
+    sex: string | null
+    services_description: string | null
+    bot_paused: boolean
+    subscription_active: boolean
+  }>('/user')
   name.value = u.data.name
   sex.value = u.data.sex || ''
   services_description.value = u.data.services_description || ''
+  botPaused.value = u.data.bot_paused
+  subscriptionActive.value = u.data.subscription_active
   const s = await http.get('/social-accounts')
   socials.value = s.data
   await loadVkGroup()
+}
+
+async function onBotSwitchChange(ev: Event): Promise<void> {
+  const el = ev.target as HTMLInputElement
+  const wantEnabled = el.checked
+  const nextPaused = !wantEnabled
+  if (wantEnabled && !subscriptionActive.value) {
+    el.checked = false
+    return
+  }
+  botToggleMsg.value = ''
+  botToggleMsgIsError.value = false
+  botToggleLoading.value = true
+  const previousPaused = botPaused.value
+  botPaused.value = nextPaused
+  el.checked = !nextPaused
+  try {
+    const { data } = await http.patch<{
+      user: { bot_paused: boolean; subscription_active: boolean }
+    }>('/profile', { bot_paused: nextPaused })
+    botPaused.value = data.user.bot_paused
+    subscriptionActive.value = data.user.subscription_active
+    el.checked = !data.user.bot_paused
+    await reloadCabinetUser?.()
+  } catch (e: unknown) {
+    botPaused.value = previousPaused
+    el.checked = !previousPaused
+    botToggleMsgIsError.value = true
+    botToggleMsg.value = axios.isAxiosError(e)
+      ? String((e.response?.data as { message?: string })?.message || e.message || 'Не удалось изменить')
+      : 'Не удалось изменить'
+  } finally {
+    botToggleLoading.value = false
+  }
 }
 
 async function saveProfile(): Promise<void> {
@@ -201,6 +265,47 @@ onBeforeUnmount(() => {
     <p v-if="msg" class="text-sm" :class="msgIsError ? 'text-red-400' : 'text-emerald-400'">
       {{ msg }}
     </p>
+
+    <div
+      class="rounded-xl border p-6 shadow-lg"
+      :class="
+        botPaused
+          ? 'border-white/10 bg-slate-900/40'
+          : 'border-emerald-500/35 bg-gradient-to-br from-emerald-950/30 to-slate-900/40'
+      "
+    >
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div class="min-w-0 flex-1">
+          <h3 class="text-lg font-semibold text-white">Бот в сообщениях</h3>
+          <p class="mt-1 text-sm leading-relaxed text-slate-300">
+            {{ botStatusLine }}
+          </p>
+          <p v-if="botToggleMsg" class="mt-2 text-sm" :class="botToggleMsgIsError ? 'text-red-400' : 'text-emerald-400'">
+            {{ botToggleMsg }}
+          </p>
+        </div>
+        <div class="flex shrink-0 flex-col items-end gap-2 sm:pl-4">
+          <span class="text-xs font-medium uppercase tracking-wide text-slate-500">состояние</span>
+          <label class="relative inline-flex h-9 w-[4.25rem] cursor-pointer items-center rounded-full bg-slate-700 p-1 transition-colors has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-45 has-[:checked]:bg-emerald-600">
+            <input
+              type="checkbox"
+              role="switch"
+              class="peer sr-only"
+              :checked="!botPaused"
+              :disabled="botSwitchDisabled"
+              :aria-label="botPaused ? 'Включить бота' : 'Выключить бота'"
+              @change="onBotSwitchChange"
+            />
+            <span
+              class="pointer-events-none h-7 w-7 translate-x-0 rounded-full bg-white shadow transition-transform duration-200 ease-out peer-checked:translate-x-[1.75rem]"
+              aria-hidden="true"
+            />
+          </label>
+          <span class="text-xs text-slate-400">{{ botPaused ? 'выкл.' : 'вкл.' }}</span>
+        </div>
+      </div>
+    </div>
+
     <form class="space-y-4 rounded-xl border border-white/10 bg-slate-900/40 p-6" @submit.prevent="saveProfile">
       <div>
         <label class="text-xs text-slate-400">Имя</label>

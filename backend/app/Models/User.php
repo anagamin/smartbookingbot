@@ -88,12 +88,8 @@ class User extends Authenticatable
         return now()->lt($this->trial_ends_at);
     }
 
-    public function canRunBot(): bool
+    public function hasActiveSubscription(): bool
     {
-        if ($this->bot_paused) {
-            return false;
-        }
-
         if ($this->isInTrialPeriod()) {
             return true;
         }
@@ -101,5 +97,31 @@ class User extends Authenticatable
         $price = (int) config('smartbooking.subscription_price_kopecks', 100_000);
 
         return $this->balance_kopecks >= $price;
+    }
+
+    public function canRunBot(): bool
+    {
+        if ($this->bot_paused) {
+            return false;
+        }
+
+        return $this->hasActiveSubscription();
+    }
+
+    /** @return array<string, mixed> */
+    public function cabinetPayload(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'email' => $this->email,
+            'sex' => $this->sex,
+            'balance_kopecks' => $this->balance_kopecks,
+            'trial_ends_at' => $this->trial_ends_at?->toIso8601String(),
+            'next_billing_at' => $this->next_billing_at?->toIso8601String(),
+            'bot_paused' => $this->bot_paused,
+            'subscription_active' => $this->hasActiveSubscription(),
+            'services_description' => $this->services_description,
+        ];
     }
 }

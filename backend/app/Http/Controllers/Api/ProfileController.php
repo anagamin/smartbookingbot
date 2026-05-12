@@ -14,18 +14,22 @@ class ProfileController extends Controller
             'name' => ['sometimes', 'string', 'max:255'],
             'sex' => ['nullable', 'string', Rule::in(['male', 'female', 'other'])],
             'services_description' => ['nullable', 'string', 'max:20000'],
+            'bot_paused' => ['sometimes', 'boolean'],
         ]);
 
-        $request->user()->update($data);
+        $user = $request->user();
+
+        if (array_key_exists('bot_paused', $data) && $data['bot_paused'] === false && ! $user->hasActiveSubscription()) {
+            return response()->json([
+                'message' => 'Включить бота можно только при активной подписке или в триальном периоде.',
+            ], 422);
+        }
+
+        $user->update($data);
+        $user->refresh();
 
         return response()->json([
-            'user' => [
-                'id' => $request->user()->id,
-                'name' => $request->user()->name,
-                'email' => $request->user()->email,
-                'sex' => $request->user()->sex,
-                'services_description' => $request->user()->services_description,
-            ],
+            'user' => $user->cabinetPayload(),
         ]);
     }
 }

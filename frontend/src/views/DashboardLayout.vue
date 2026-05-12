@@ -9,6 +9,7 @@ const user = ref<{
   name: string
   balance_kopecks: number
   bot_paused: boolean
+  subscription_active?: boolean
 } | null>(null)
 
 const unreadCount = ref(0)
@@ -64,6 +65,7 @@ async function logout() {
 }
 
 provide('refreshCabinetUnread', pollUnreadSnapshot)
+provide('reloadCabinetUser', loadUser)
 
 watch(
   () => route.path,

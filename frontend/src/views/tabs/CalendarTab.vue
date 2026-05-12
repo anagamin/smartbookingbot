@@ -6,7 +6,11 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import FullCalendar from '@fullcalendar/vue3'
-import { computed, onMounted, ref } from 'vue'
+import Multiselect from '@vueform/multiselect'
+import { onMounted, ref } from 'vue'
+
+/** Must match `timeZone` in calendarOptions — API stores datetimes in app timezone (Europe/Moscow). */
+const CALENDAR_TIMEZONE = 'Europe/Moscow'
 
 const calendarRef = ref<InstanceType<typeof FullCalendar> | null>(null)
 const services = ref<Array<{ id: number; title: string }>>([])
@@ -22,19 +26,6 @@ const form = ref({
   status: 'confirmed' as 'confirmed' | 'cancelled',
 })
 const sessionMessages = ref<Array<{ direction: string; text: string; created_at: string }>>([])
-
-const orderedServices = computed(() => {
-  const list = services.value
-  const byId = new Map(list.map((s) => [s.id, s]))
-  const chosen: Array<{ id: number; title: string }> = []
-  for (const id of form.value.service_ids) {
-    const s = byId.get(id)
-    if (s) chosen.push(s)
-  }
-  const chosenSet = new Set(form.value.service_ids)
-  const rest = list.filter((s) => !chosenSet.has(s.id))
-  return [...chosen, ...rest]
-})
 
 function appointmentServiceIdsFromDetail(data: {
   service_id?: number | null
@@ -52,13 +43,32 @@ function appointmentServiceIdsFromDetail(data: {
   return ids
 }
 
-function onServicesMultiselectChange(e: Event) {
-  const el = e.target as HTMLSelectElement
-  const ids: number[] = []
-  for (let i = 0; i < el.selectedOptions.length; i++) {
-    ids.push(Number(el.selectedOptions[i].value))
+function isoToDatetimeLocalInTimeZone(iso: string, timeZone: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) {
+    return iso.length >= 16 ? iso.slice(0, 16) : iso
   }
-  form.value.service_ids = ids
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(d)
+  const v = (t: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === t)?.value ?? ''
+  return `${v('year')}-${v('month')}-${v('day')}T${v('hour')}:${v('minute')}`
+}
+
+/** `datetime-local` value (no TZ) → `Y-m-d H:i:s` for Laravel `APP_TIMEZONE`. */
+function datetimeLocalToAppTimezoneSql(naive: string): string {
+  const m = naive
+    .trim()
+    .match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/)
+  if (!m) return naive.trim()
+  const [, date, hh, mm, ss] = m
+  return `${date} ${hh}:${mm}:${ss ?? '00'}`
 }
 
 async function loadServices() {
@@ -102,8 +112,8 @@ async function onEventClick(arg: { event: { id: string } }) {
   form.value = {
     client_name: data.client_name,
     service_ids: appointmentServiceIdsFromDetail(data),
-    starts_at: data.starts_at.slice(0, 16),
-    ends_at: data.ends_at.slice(0, 16),
+    starts_at: isoToDatetimeLocalInTimeZone(data.starts_at, CALENDAR_TIMEZONE),
+    ends_at: isoToDatetimeLocalInTimeZone(data.ends_at, CALENDAR_TIMEZONE),
     price_rub: data.price_kopecks != null ? data.price_kopecks / 100 : '',
     status: data.status,
   }
@@ -116,8 +126,8 @@ async function saveAppointment() {
     client_name: form.value.client_name,
     service_id: ids.length ? ids[0] : null,
     extra_service_ids: ids.slice(1),
-    starts_at: new Date(form.value.starts_at).toISOString(),
-    ends_at: new Date(form.value.ends_at).toISOString(),
+    starts_at: datetimeLocalToAppTimezoneSql(form.value.starts_at),
+    ends_at: datetimeLocalToAppTimezoneSql(form.value.ends_at),
     price_kopecks:
       form.value.price_rub === '' || form.value.price_rub === null || form.value.price_rub === undefined
         ? null
@@ -147,7 +157,7 @@ const calendarOptions: CalendarOptions = {
   },
   locales: [ruLocale],
   locale: 'ru',
-  timeZone: 'Europe/Moscow',
+  timeZone: CALENDAR_TIMEZONE,
   height: 'auto',
   slotMinTime: '08:00:00',
   slotMaxTime: '22:00:00',
@@ -182,24 +192,23 @@ onMounted(loadServices)
           </div>
           <div>
             <label class="text-xs text-slate-400">Услуги</label>
-            <select
-              multiple
-              size="8"
-              class="mt-1 min-h-[10rem] w-full rounded border border-white/10 bg-slate-950 px-2 py-1 text-white"
-              @change="onServicesMultiselectChange"
-            >
-              <option
-                v-for="s in orderedServices"
-                :key="s.id"
-                :value="s.id"
-                :selected="form.service_ids.includes(s.id)"
-              >
-                {{ s.title }}
-              </option>
-            </select>
-            <p class="mt-1 text-xs text-slate-500">
-              Выбор нескольких услуг: Ctrl+клик. Порядок в списке — первая отмеченная сверху основная, ниже — вместе с ней.
-            </p>
+            <Multiselect
+              v-model="form.service_ids"
+              class="sb-services-multiselect mt-1"
+              mode="tags"
+              :options="services"
+              value-prop="id"
+              label="title"
+              track-by="id"
+              placeholder="Выберите одну или несколько услуг"
+              no-options-text="Нет услуг"
+              no-results-text="Ничего не найдено"
+              :close-on-select="false"
+              :searchable="true"
+              :can-clear="true"
+              :create-tag="false"
+              :create-option="false"
+            />
           </div>
           <div>
             <label class="text-xs text-slate-400">Начало</label>
@@ -245,7 +254,47 @@ onMounted(loadServices)
   </div>
 </template>
 
+<style src="@vueform/multiselect/themes/default.css"></style>
+
 <style scoped>
+.sb-services-multiselect {
+  --ms-font-size: 0.875rem;
+  --ms-line-height: 1.375;
+  --ms-radius: 0.375rem;
+  --ms-bg: rgb(2 6 23);
+  --ms-bg-disabled: rgb(15 23 42);
+  --ms-border-color: rgba(255 255 255 / 0.1);
+  --ms-border-width: 1px;
+  --ms-border-color-active: rgba(99 102 241 / 0.45);
+  --ms-ring-width: 2px;
+  --ms-ring-color: rgba(99 102 241 / 0.25);
+  --ms-py: 0.35rem;
+  --ms-px: 0.5rem;
+  --ms-placeholder-color: rgb(100 116 139);
+  --ms-max-height: 12rem;
+  --ms-dropdown-bg: rgb(15 23 42);
+  --ms-dropdown-border-color: rgba(255 255 255 / 0.1);
+  --ms-dropdown-radius: 0.375rem;
+  --ms-option-font-size: 0.875rem;
+  --ms-option-bg-pointed: rgba(255 255 255 / 0.06);
+  --ms-option-color-pointed: rgb(241 245 249);
+  --ms-option-bg-selected: rgb(99 102 241);
+  --ms-option-color-selected: rgb(255 255 255);
+  --ms-option-bg-selected-pointed: rgb(79 70 229);
+  --ms-option-color-selected-pointed: rgb(255 255 255);
+  --ms-empty-color: rgb(148 163 184);
+  --ms-tag-bg: rgb(67 56 202);
+  --ms-tag-color: rgb(238 242 255);
+  --ms-tag-radius: 0.375rem;
+  --ms-tag-font-weight: 500;
+  --ms-tag-font-size: 0.8125rem;
+  --ms-spinner-color: rgb(99 102 241);
+  --ms-caret-color: rgb(148 163 184);
+  --ms-clear-color: rgb(148 163 184);
+  --ms-clear-color-hover: rgb(226 232 240);
+  color: rgb(248 250 252);
+}
+
 :deep(.sb-event-cancelled) {
   opacity: 0.4 !important;
   background-color: #cbd5e1 !important;

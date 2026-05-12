@@ -11,11 +11,7 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/', name: 'home', component: HomeView },
-    {
-      path: '/contact',
-      name: 'contact',
-      component: () => import('../views/ContactView.vue'),
-    },
+    { path: '/contact', redirect: '/app/contact' },
     {
       path: '/login',
       name: 'login',
@@ -42,13 +38,20 @@ const router = createRouter({
         { path: 'calendar', name: 'calendar', component: () => import('../views/tabs/CalendarTab.vue') },
         { path: 'billing', name: 'billing', component: () => import('../views/tabs/BillingTab.vue') },
         { path: 'notifications', name: 'notifications', component: () => import('../views/tabs/NotificationsTab.vue') },
+        {
+          path: 'contact',
+          name: 'contact',
+          meta: { requiresAuth: true },
+          component: () => import('../views/ContactView.vue'),
+        },
       ],
     },
   ],
 })
 
 router.beforeEach((to) => {
-  if (!to.meta.requiresAuth) {
+  const requiresAuth = to.matched.some((record) => record.meta.requiresAuth === true)
+  if (!requiresAuth) {
     return true
   }
   if (!localStorage.getItem('auth_token')) {

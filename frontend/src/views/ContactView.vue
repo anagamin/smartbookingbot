@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { RouterLink } from 'vue-router'
 import http from '@/api/http'
 
 type MessageType = 'bug' | 'improvement'
@@ -89,49 +88,17 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gradient-to-b from-slate-950 via-indigo-950/40 to-slate-950">
-    <header class="sticky top-0 z-30 border-b border-white/10 bg-slate-950/70 backdrop-blur">
-      <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
-        <RouterLink to="/" class="flex items-center gap-3 transition hover:opacity-90">
-          <div class="grid h-9 w-9 place-items-center rounded-xl bg-indigo-500/15 ring-1 ring-indigo-400/20">
-            <span class="text-sm font-semibold text-indigo-200">SB</span>
-          </div>
-          <span class="text-base font-semibold tracking-tight text-white">SmartBookingBot</span>
-        </RouterLink>
-        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
-          <RouterLink
-            to="/contact"
-            class="rounded-lg px-3 py-2 text-sm font-medium text-white ring-1 ring-white/15 sm:px-4"
-          >
-            Свяжитесь с нами
-          </RouterLink>
-          <RouterLink
-            to="/login"
-            class="rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:text-white sm:px-4"
-          >
-            Войти
-          </RouterLink>
-          <RouterLink
-            to="/register"
-            class="rounded-lg bg-indigo-500 px-3 py-2 text-sm font-medium text-white shadow-lg shadow-indigo-500/30 transition hover:bg-indigo-400 sm:px-4"
-          >
-            Попробовать бесплатно
-          </RouterLink>
-        </div>
-      </div>
-    </header>
+  <div>
+    <h1 class="text-2xl font-semibold text-white sm:text-3xl">Свяжитесь с нами</h1>
+    <p class="mt-2 max-w-2xl text-sm text-slate-400 sm:text-base">
+      Сообщите об ошибке или предложите улучшение — мы читаем все обращения. Ответ появится в таблице ниже, когда будет
+      готов.
+    </p>
 
-    <main class="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
-      <h1 class="text-2xl font-semibold text-white sm:text-3xl">Свяжитесь с нами</h1>
-      <p class="mt-2 max-w-2xl text-sm text-slate-400 sm:text-base">
-        Сообщите об ошибке или предложите улучшение — мы читаем все обращения. Ответ появится в таблице ниже, когда
-        будет готов.
-      </p>
-
-      <form
-        class="mt-10 max-w-2xl space-y-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6 sm:p-8"
-        @submit.prevent="onSubmit"
-      >
+    <form
+      class="mt-10 max-w-2xl space-y-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6 sm:p-8"
+      @submit.prevent="onSubmit"
+    >
         <div>
           <p class="text-sm font-medium text-slate-200">Тип сообщения</p>
           <div class="mt-3 space-y-3">
@@ -212,6 +179,5 @@ onMounted(() => {
           </table>
         </div>
       </section>
-    </main>
   </div>
 </template>

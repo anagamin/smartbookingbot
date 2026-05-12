@@ -3,14 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\ContactMessage;
 use Illuminate\Http\Request;
 
 class ContactMessageController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $rows = ContactMessage::query()
+        $rows = $request->user()
+            ->contactMessages()
             ->orderByDesc('created_at')
             ->get(['id', 'created_at', 'message_type', 'body', 'response']);
 
@@ -24,7 +24,7 @@ class ContactMessageController extends Controller
             'body' => ['required', 'string', 'min:5', 'max:10000'],
         ]);
 
-        ContactMessage::query()->create([
+        $request->user()->contactMessages()->create([
             'message_type' => $data['message_type'],
             'body' => $data['body'],
         ]);

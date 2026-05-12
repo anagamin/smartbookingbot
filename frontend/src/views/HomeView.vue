@@ -95,12 +95,6 @@ const plans = [
         </div>
         <div class="flex items-center gap-2 sm:gap-3">
           <RouterLink
-            to="/contact"
-            class="rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:text-white sm:px-4"
-          >
-            Свяжитесь с нами
-          </RouterLink>
-          <RouterLink
             to="/login"
             class="rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:text-white sm:px-4"
           >

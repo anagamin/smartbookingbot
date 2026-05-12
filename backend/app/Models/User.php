@@ -81,6 +81,11 @@ class User extends Authenticatable
         return $this->hasMany(BillingTransaction::class);
     }
 
+    public function contactMessages(): HasMany
+    {
+        return $this->hasMany(ContactMessage::class);
+    }
+
     public function isInTrialPeriod(): bool
     {
         if ($this->trial_ends_at === null) {

@@ -93,6 +93,7 @@ const nav = [
   { to: '/app/calendar', label: 'Календарь', showUnreadBadge: false },
   { to: '/app/billing', label: 'Оплата', showUnreadBadge: false },
   { to: '/app/notifications', label: 'Уведомления', showUnreadBadge: true },
+  { to: '/app/contact', label: 'Свяжитесь с нами', showUnreadBadge: false },
 ]
 
 const subscriptionEndLabel = computed(() => {

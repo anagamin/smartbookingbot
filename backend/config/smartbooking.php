@@ -46,5 +46,11 @@ return [
     'yookassa' => [
         'shop_id' => env('YOOKASSA_SHOP_ID'),
         'secret_key' => env('YOOKASSA_SECRET_KEY'),
+        /** Ставка НДС для чека (1–12). По умолчанию 6 — «НДС не облагается» (часто УСН). См. документацию ЮKassa. */
+        'receipt_vat_code' => (int) env('YOOKASSA_RECEIPT_VAT_CODE', 6),
+        /** Код системы налогообложения (1–6), если в кассе настроено несколько СНО. Иначе не задавайте. */
+        'receipt_tax_system_code' => (($t = env('YOOKASSA_RECEIPT_TAX_SYSTEM_CODE')) !== null && $t !== '')
+            ? (int) $t
+            : null,
     ],
 ];

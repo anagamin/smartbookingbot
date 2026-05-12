@@ -43,10 +43,16 @@ class BillingController extends Controller
         $data = $request->validate([
             'plan_key' => ['required', 'string', 'max:32', Rule::in(array_keys(config('smartbooking.subscription_plans', [])))],
             'return_url' => ['required', 'url'],
+            'customer_phone' => ['nullable', 'string', 'max:32'],
         ]);
 
         try {
-            $result = $yooKassa->createPlanPayment($request->user(), $data['plan_key'], $data['return_url']);
+            $result = $yooKassa->createPlanPayment(
+                $request->user(),
+                $data['plan_key'],
+                $data['return_url'],
+                $data['customer_phone'] ?? null,
+            );
         } catch (RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }

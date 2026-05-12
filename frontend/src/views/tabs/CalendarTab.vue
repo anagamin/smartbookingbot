@@ -13,7 +13,7 @@ import { onMounted, ref } from 'vue'
 const CALENDAR_TIMEZONE = 'Europe/Moscow'
 
 const calendarRef = ref<InstanceType<typeof FullCalendar> | null>(null)
-const services = ref<Array<{ id: number; title: string }>>([])
+const services = ref<Array<{ id: number; title: string; duration_minutes: number }>>([])
 
 const modal = ref<'create' | 'edit' | null>(null)
 const editId = ref<number | null>(null)
@@ -71,6 +71,56 @@ function datetimeLocalToAppTimezoneSql(naive: string): string {
   return `${date} ${hh}:${mm}:${ss ?? '00'}`
 }
 
+function parseDatetimeLocalToDate(naive: string): Date | null {
+  const m = naive.trim().match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/)
+  if (!m) return null
+  const y = Number(m[1])
+  const mo = Number(m[2])
+  const d = Number(m[3])
+  const h = Number(m[4])
+  const mi = Number(m[5])
+  return new Date(y, mo - 1, d, h, mi, 0, 0)
+}
+
+function formatDateToDatetimeLocal(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function addMinutesToDatetimeLocal(naive: string, addMinutes: number): string {
+  const base = parseDatetimeLocalToDate(naive)
+  if (!base || Number.isNaN(base.getTime())) return naive
+  base.setMinutes(base.getMinutes() + addMinutes)
+  return formatDateToDatetimeLocal(base)
+}
+
+function totalSelectedDurationMinutes(): number {
+  const ids = form.value.service_ids
+  if (!ids.length) return 60
+  let sum = 0
+  for (const id of ids) {
+    const s = services.value.find((x) => x.id === Number(id))
+    if (s) sum += Math.max(1, Number(s.duration_minutes) || 0)
+  }
+  return sum > 0 ? sum : 60
+}
+
+function recalculateEndFromStart() {
+  if (!form.value.starts_at?.trim()) return
+  form.value.ends_at = addMinutesToDatetimeLocal(form.value.starts_at, totalSelectedDurationMinutes())
+}
+
+/** Use with `@update:model-value`, not `@change`: `change` fires before the value is updated (one-step lag). */
+function onServiceIdsUpdate(v: unknown) {
+  form.value.service_ids = Array.isArray(v) ? v.map((id) => Number(id)) : []
+  recalculateEndFromStart()
+}
+
+function onStartsAtInput(e: Event) {
+  form.value.starts_at = (e.target as HTMLInputElement).value
+  recalculateEndFromStart()
+}
+
 async function loadServices() {
   const { data } = await http.get('/services')
   services.value = data
@@ -91,14 +141,19 @@ async function fetchEvents(
   }
 }
 
-function onDateClick(arg: { dateStr: string }) {
+function onDateClick(arg: { date: Date; dateStr: string; allDay: boolean }) {
   modal.value = 'create'
   editId.value = null
+  const starts_at =
+    arg.allDay || !arg.dateStr.includes('T')
+      ? `${arg.dateStr.slice(0, 10)}T10:00`
+      : isoToDatetimeLocalInTimeZone(arg.date.toISOString(), CALENDAR_TIMEZONE)
+  const ends_at = addMinutesToDatetimeLocal(starts_at, 60)
   form.value = {
     client_name: '',
     service_ids: [],
-    starts_at: `${arg.dateStr}T10:00`,
-    ends_at: `${arg.dateStr}T11:00`,
+    starts_at,
+    ends_at,
     price_rub: '',
     status: 'confirmed',
   }
@@ -193,9 +248,10 @@ onMounted(loadServices)
           <div>
             <label class="text-xs text-slate-400">Услуги</label>
             <Multiselect
-              v-model="form.service_ids"
+              :model-value="form.service_ids"
               class="sb-services-multiselect mt-1"
               mode="tags"
+              @update:model-value="onServiceIdsUpdate"
               :options="services"
               value-prop="id"
               label="title"
@@ -212,7 +268,12 @@ onMounted(loadServices)
           </div>
           <div>
             <label class="text-xs text-slate-400">Начало</label>
-            <input v-model="form.starts_at" type="datetime-local" class="mt-1 w-full rounded border border-white/10 bg-slate-950 px-2 py-1 text-white" />
+            <input
+              :value="form.starts_at"
+              type="datetime-local"
+              class="mt-1 w-full rounded border border-white/10 bg-slate-950 px-2 py-1 text-white"
+              @input="onStartsAtInput"
+            />
           </div>
           <div>
             <label class="text-xs text-slate-400">Конец</label>

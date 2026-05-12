@@ -4,13 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\SocialAccount;
-use App\Services\VkApiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
 
 class VkIntegrationController extends Controller
 {
-    public function showGroup(Request $request, VkApiService $vkApi)
+    public function showGroup(Request $request)
     {
         $webhookUrl = URL::to('/api/webhooks/vk');
 
@@ -25,11 +24,6 @@ class VkIntegrationController extends Controller
                 'group_id' => null,
                 'webhook_url' => $webhookUrl,
             ]);
-        }
-
-        if ($this->isAwaitingConfirmation($acc)) {
-            $this->syncConfirmationFromVk($acc, $vkApi, $webhookUrl);
-            $acc->refresh();
         }
 
         $status = $this->resolveStatus($acc);
@@ -88,38 +82,6 @@ class VkIntegrationController extends Controller
             ->delete();
 
         return response()->json(['ok' => true]);
-    }
-
-    private function isAwaitingConfirmation(SocialAccount $acc): bool
-    {
-        $meta = $acc->meta ?? [];
-
-        return ($meta['confirmation_pending'] ?? false) === true
-            && empty($meta['callback_confirmed_at']);
-    }
-
-    private function syncConfirmationFromVk(SocialAccount $acc, VkApiService $vkApi, string $webhookUrl): void
-    {
-        $groupId = (int) $acc->provider_user_id;
-        if ($groupId <= 0) {
-            return;
-        }
-
-        $token = $acc->access_token;
-        if (! is_string($token) || $token === '') {
-            return;
-        }
-
-        $state = $vkApi->callbackServerState($token, $groupId, $webhookUrl);
-        if ($state !== 'ok') {
-            return;
-        }
-
-        $meta = $acc->meta ?? [];
-        $meta['callback_confirmed_at'] = now()->toIso8601String();
-        $meta['confirmation_pending'] = false;
-        $acc->meta = $meta;
-        $acc->save();
     }
 
     private function resolveStatus(SocialAccount $acc): string

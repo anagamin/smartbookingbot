@@ -21,7 +21,7 @@ class ProfileController extends Controller
 
         if (array_key_exists('bot_paused', $data) && $data['bot_paused'] === false && ! $user->hasActiveSubscription()) {
             return response()->json([
-                'message' => 'Включить бота можно только при активной подписке или в триальном периоде.',
+                'message' => 'Включить бота можно только при активной подписке. Продлите доступ на странице «Оплата».',
             ], 422);
         }
 

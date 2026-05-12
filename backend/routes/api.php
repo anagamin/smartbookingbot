@@ -41,6 +41,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/vk/group', [VkIntegrationController::class, 'showGroup']);
     Route::post('/vk/group', [VkIntegrationController::class, 'storeGroup']);
+    Route::post('/vk/group/detach', [VkIntegrationController::class, 'destroyGroup']);
     Route::delete('/vk/group', [VkIntegrationController::class, 'destroyGroup']);
 
     Route::apiResource('services', ServiceController::class)->except(['show']);
@@ -60,6 +61,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notifications/unread-snapshot', [NotificationController::class, 'unreadSnapshot']);
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
 
+    Route::get('/billing/plans', [BillingController::class, 'plans']);
+    Route::post('/billing/checkout', [BillingController::class, 'createCheckout']);
     Route::get('/billing/transactions', [BillingController::class, 'transactions']);
-    Route::post('/billing/top-up', [BillingController::class, 'createTopUp']);
 });

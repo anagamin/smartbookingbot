@@ -18,11 +18,13 @@ class AuthRegistrationTest extends DatabaseTestCase
         ]);
 
         $response->assertCreated()
-            ->assertJsonStructure(['token', 'user' => ['id', 'email', 'trial_ends_at']]);
+            ->assertJsonStructure(['token', 'user' => ['id', 'email', 'trial_ends_at', 'subscription_ends_at']]);
 
         $this->assertDatabaseHas('users', ['email' => 'test@example.com']);
         $user = User::query()->where('email', 'test@example.com')->first();
         $this->assertNotNull($user?->trial_ends_at);
         $this->assertNotNull($user?->next_billing_at);
+        $this->assertNotNull($user?->subscription_ends_at);
+        $this->assertTrue($user->trial_ends_at->eq($user->subscription_ends_at));
     }
 }

@@ -22,6 +22,7 @@ const form = ref({
   status: 'confirmed' as 'confirmed' | 'cancelled',
 })
 const sessionMessages = ref<Array<{ direction: string; text: string; created_at: string }>>([])
+const extraServicesLabel = ref('')
 
 async function loadServices() {
   const { data } = await http.get('/services')
@@ -54,6 +55,7 @@ function onDateClick(arg: { dateStr: string }) {
     price_kopecks: '',
     status: 'confirmed',
   }
+  extraServicesLabel.value = ''
   sessionMessages.value = []
 }
 
@@ -61,6 +63,8 @@ async function onEventClick(arg: { event: { id: string } }) {
   modal.value = 'edit'
   editId.value = Number(arg.event.id)
   const { data } = await http.get(`/appointments/${editId.value}`)
+  const extras = (data.extra_services as Array<{ title: string }> | undefined) || []
+  extraServicesLabel.value = extras.map((x) => x.title).join(' + ')
   form.value = {
     client_name: data.client_name,
     service_id: data.service_id ?? data.service?.id ?? null,
@@ -143,6 +147,7 @@ onMounted(loadServices)
               <option :value="null">—</option>
               <option v-for="s in services" :key="s.id" :value="s.id">{{ s.title }}</option>
             </select>
+            <p v-if="extraServicesLabel" class="mt-1 text-xs text-slate-500">Вместе с основной: {{ extraServicesLabel }}</p>
           </div>
           <div>
             <label class="text-xs text-slate-400">Начало</label>

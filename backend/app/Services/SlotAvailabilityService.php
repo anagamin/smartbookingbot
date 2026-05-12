@@ -23,8 +23,9 @@ class SlotAvailabilityService
         Carbon $rangeStart,
         Carbon $rangeEnd,
         int $maxSuggestions = 60,
+        ?int $durationMinutesOverride = null,
     ): array {
-        $duration = $service?->duration_minutes ?? 60;
+        $duration = $durationMinutesOverride ?? $service?->duration_minutes ?? 60;
         $working = WorkingHour::query()->where('user_id', $user->id)->get()->groupBy('weekday');
         $appointments = Appointment::query()
             ->where('user_id', $user->id)
@@ -68,9 +69,9 @@ class SlotAvailabilityService
     /**
      * @return list<array{start: Carbon, end: Carbon}>
      */
-    public function suggestSlots(User $user, ?Service $service, int $daysAhead = 14, int $maxSuggestions = 24): array
+    public function suggestSlots(User $user, ?Service $service, int $daysAhead = 14, int $maxSuggestions = 24, ?int $durationMinutesOverride = null): array
     {
-        $duration = $service?->duration_minutes ?? 60;
+        $duration = $durationMinutesOverride ?? $service?->duration_minutes ?? 60;
         $working = WorkingHour::query()->where('user_id', $user->id)->get()->groupBy('weekday');
         $appointments = Appointment::query()
             ->where('user_id', $user->id)
@@ -100,10 +101,6 @@ class SlotAvailabilityService
         return $suggestions;
     }
 
-    /**
-     * @param  Collection<int, Appointment>  $appointments
-     * @param  list<array{start: Carbon, end: Carbon}>  $suggestions
-     */
     /**
      * @param  Collection<int, Appointment>  $appointments
      * @return list<array{start: Carbon, end: Carbon}>
@@ -242,27 +239,58 @@ class SlotAvailabilityService
     }
 
     /**
-     * Ищет услугу по фразам и отдельным словам из переписки (клиент редко пишет название целиком как в прайсе).
+     * Все услуги, упомянутые в тексте (подстрока названия, порядок — по первому вхождению в тексте).
+     *
+     * @return Collection<int, Service>
      */
-    public function findServiceInDialogText(User $user, string $text): ?Service
+    public function findServicesInDialogText(User $user, string $text): Collection
     {
         $text = trim($text);
         if ($text === '') {
-            return null;
+            return collect();
         }
 
+        $lower = mb_strtolower($text);
+        $candidates = Service::query()
+            ->where('user_id', $user->id)
+            ->where('is_active', true)
+            ->get();
+
+        $positions = [];
+        foreach ($candidates as $s) {
+            $needle = mb_strtolower($s->title);
+            if (mb_strlen($needle) < 2) {
+                continue;
+            }
+            $pos = mb_strpos($lower, $needle);
+            if ($pos !== false) {
+                $positions[$s->id] = ['pos' => $pos, 'service' => $s];
+            }
+        }
+
+        if ($positions !== []) {
+            uasort($positions, fn (array $a, array $b): int => $a['pos'] <=> $b['pos']);
+
+            return collect($positions)->map(fn (array $row) => $row['service'])->values();
+        }
+
+        $byDiscovery = collect();
+        $seen = [];
         foreach (preg_split('/\R+/u', $text) as $line) {
             $line = trim($line);
             if ($line === '') {
                 continue;
             }
             $hit = $this->findServiceByTitle($user, $line);
-            if ($hit !== null) {
-                return $hit;
+            if ($hit !== null && ! isset($seen[$hit->id])) {
+                $seen[$hit->id] = true;
+                $byDiscovery->push($hit);
             }
         }
+        if ($byDiscovery->isNotEmpty()) {
+            return $byDiscovery;
+        }
 
-        $lower = mb_strtolower($text);
         $words = preg_split('/[^\p{L}\p{N}]+/u', $lower, -1, PREG_SPLIT_NO_EMPTY);
         $words = array_values(array_unique($words));
         usort($words, fn (string $a, string $b) => mb_strlen($b) <=> mb_strlen($a));
@@ -272,11 +300,20 @@ class SlotAvailabilityService
                 continue;
             }
             $hit = $this->findServiceByTitle($user, $w);
-            if ($hit !== null) {
-                return $hit;
+            if ($hit !== null && ! isset($seen[$hit->id])) {
+                $seen[$hit->id] = true;
+                $byDiscovery->push($hit);
             }
         }
 
-        return null;
+        return $byDiscovery;
+    }
+
+    /**
+     * Первая услуга из {@see findServicesInDialogText} (для обратной совместимости).
+     */
+    public function findServiceInDialogText(User $user, string $text): ?Service
+    {
+        return $this->findServicesInDialogText($user, $text)->first();
     }
 }

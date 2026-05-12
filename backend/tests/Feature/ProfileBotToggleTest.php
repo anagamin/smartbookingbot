@@ -10,9 +10,9 @@ class ProfileBotToggleTest extends DatabaseTestCase
 {
     public function test_user_payload_includes_subscription_active(): void
     {
-        $price = (int) config('smartbooking.subscription_price_kopecks', 100_000);
         $trialUser = User::factory()->create([
             'trial_ends_at' => now()->addDay(),
+            'subscription_ends_at' => now()->addDay(),
             'balance_kopecks' => 0,
             'bot_paused' => true,
         ]);
@@ -25,7 +25,8 @@ class ProfileBotToggleTest extends DatabaseTestCase
 
         $paidUser = User::factory()->create([
             'trial_ends_at' => now()->subDay(),
-            'balance_kopecks' => $price,
+            'subscription_ends_at' => now()->addMonth(),
+            'balance_kopecks' => 0,
             'bot_paused' => false,
         ]);
         Sanctum::actingAs($paidUser);
@@ -36,7 +37,8 @@ class ProfileBotToggleTest extends DatabaseTestCase
 
         $inactiveUser = User::factory()->create([
             'trial_ends_at' => now()->subDay(),
-            'balance_kopecks' => $price - 1,
+            'subscription_ends_at' => now()->subDay(),
+            'balance_kopecks' => 0,
             'bot_paused' => true,
         ]);
         Sanctum::actingAs($inactiveUser);
@@ -50,6 +52,7 @@ class ProfileBotToggleTest extends DatabaseTestCase
     {
         $user = User::factory()->create([
             'trial_ends_at' => now()->subDay(),
+            'subscription_ends_at' => now()->subDay(),
             'balance_kopecks' => 0,
             'bot_paused' => true,
         ]);
@@ -57,7 +60,7 @@ class ProfileBotToggleTest extends DatabaseTestCase
 
         $this->patchJson('/api/profile', ['bot_paused' => false])
             ->assertStatus(422)
-            ->assertJsonFragment(['message' => 'Включить бота можно только при активной подписке или в триальном периоде.']);
+            ->assertJsonFragment(['message' => 'Включить бота можно только при активной подписке. Продлите доступ на странице «Оплата».']);
 
         $user->refresh();
         $this->assertTrue($user->bot_paused);
@@ -67,6 +70,7 @@ class ProfileBotToggleTest extends DatabaseTestCase
     {
         $user = User::factory()->create([
             'trial_ends_at' => now()->addDay(),
+            'subscription_ends_at' => now()->addDay(),
             'bot_paused' => true,
         ]);
         Sanctum::actingAs($user);
@@ -83,6 +87,7 @@ class ProfileBotToggleTest extends DatabaseTestCase
     {
         $user = User::factory()->create([
             'trial_ends_at' => now()->subDay(),
+            'subscription_ends_at' => now()->subDay(),
             'balance_kopecks' => 0,
             'bot_paused' => false,
         ]);

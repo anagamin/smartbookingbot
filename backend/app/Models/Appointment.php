@@ -14,6 +14,7 @@ class Appointment extends Model
     protected $fillable = [
         'user_id',
         'service_id',
+        'extra_service_ids',
         'dialog_session_id',
         'client_name',
         'starts_at',
@@ -28,6 +29,7 @@ class Appointment extends Model
         return [
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
+            'extra_service_ids' => 'array',
         ];
     }
 

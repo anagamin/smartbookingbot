@@ -99,12 +99,14 @@ class YandexOAuthService
                 return $existing->user;
             }
 
+            $trialEnd = now()->addDays((int) config('smartbooking.trial_days', 30));
             $user = User::query()->create([
                 'name' => $name,
                 'email' => $email,
                 'password' => Str::password(32),
-                'trial_ends_at' => now()->addDays((int) config('smartbooking.trial_days', 30)),
-                'next_billing_at' => now()->addDays((int) config('smartbooking.trial_days', 30)),
+                'trial_ends_at' => $trialEnd,
+                'next_billing_at' => $trialEnd,
+                'subscription_ends_at' => $trialEnd,
             ]);
 
             SocialAccount::query()->create([

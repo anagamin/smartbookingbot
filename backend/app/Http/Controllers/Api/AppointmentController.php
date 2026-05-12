@@ -8,6 +8,7 @@ use App\Models\Service;
 use App\Services\SlotAvailabilityService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class AppointmentController extends Controller
 {
@@ -29,7 +30,21 @@ class AppointmentController extends Controller
             ->orderBy('starts_at')
             ->get();
 
-        return $items->map(fn (Appointment $a) => $this->toCalendarEvent($a));
+        $extraIds = $items
+            ->flatMap(fn (Appointment $a) => collect($a->extra_service_ids ?? []))
+            ->unique()
+            ->filter()
+            ->values()
+            ->all();
+        $extraServiceById = $extraIds === []
+            ? collect()
+            : Service::query()
+                ->where('user_id', $request->user()->id)
+                ->whereIn('id', $extraIds)
+                ->get()
+                ->keyBy('id');
+
+        return $items->map(fn (Appointment $a) => $this->toCalendarEvent($a, $extraServiceById));
     }
 
     public function store(Request $request)
@@ -69,7 +84,15 @@ class AppointmentController extends Controller
             'status' => Appointment::STATUS_CONFIRMED,
         ]);
 
-        return response()->json($this->toCalendarEvent($appointment->load('service')), 201);
+        $extraMap = collect($appointment->extra_service_ids ?? [])->filter()->isEmpty()
+            ? collect()
+            : Service::query()
+                ->where('user_id', $request->user()->id)
+                ->whereIn('id', $appointment->extra_service_ids ?? [])
+                ->get()
+                ->keyBy('id');
+
+        return response()->json($this->toCalendarEvent($appointment->load('service'), $extraMap), 201);
     }
 
     public function show(Request $request, Appointment $appointment)
@@ -130,9 +153,21 @@ class AppointmentController extends Controller
         abort_if($appointment->user_id !== $request->user()->id, 403);
     }
 
-    private function toCalendarEvent(Appointment $a): array
+    private function toCalendarEvent(Appointment $a, ?Collection $extraServiceById = null): array
     {
-        $title = $a->client_name.($a->service ? ' — '.$a->service->title : '');
+        $extraServiceById = $extraServiceById ?? collect();
+        $titles = collect();
+        if ($a->service !== null) {
+            $titles->push($a->service->title);
+        }
+        foreach ($a->extra_service_ids ?? [] as $extraId) {
+            $ex = $extraServiceById->get((int) $extraId);
+            if ($ex !== null) {
+                $titles->push($ex->title);
+            }
+        }
+        $servicePart = $titles->isNotEmpty() ? ' — '.$titles->implode(' + ') : '';
+        $title = $a->client_name.$servicePart;
 
         return [
             'id' => (string) $a->id,
@@ -144,6 +179,7 @@ class AppointmentController extends Controller
                 'client_name' => $a->client_name,
                 'status' => $a->status,
                 'service_id' => $a->service_id,
+                'extra_service_ids' => $a->extra_service_ids ?? [],
                 'dialog_session_id' => $a->dialog_session_id,
                 'price_kopecks' => $a->price_kopecks,
             ],
@@ -152,16 +188,34 @@ class AppointmentController extends Controller
 
     private function toDetail(Appointment $a): array
     {
+        $extraIds = collect($a->extra_service_ids ?? [])->filter()->values()->all();
+        $extraServices = $extraIds === []
+            ? collect()
+            : Service::query()
+                ->where('user_id', $a->user_id)
+                ->whereIn('id', $extraIds)
+                ->get()
+                ->keyBy('id');
+        $extraOrdered = collect($extraIds)
+            ->map(fn (int|string $id) => $extraServices->get((int) $id))
+            ->filter()
+            ->values();
+
         return [
             'id' => $a->id,
             'client_name' => $a->client_name,
             'service_id' => $a->service_id,
+            'extra_service_ids' => $a->extra_service_ids ?? [],
             'starts_at' => $a->starts_at->toIso8601String(),
             'ends_at' => $a->ends_at->toIso8601String(),
             'status' => $a->status,
             'price_kopecks' => $a->price_kopecks,
             'chat_excerpt' => $a->chat_excerpt,
             'service' => $a->service,
+            'extra_services' => $extraOrdered->map(fn (Service $s) => [
+                'id' => $s->id,
+                'title' => $s->title,
+            ])->values()->all(),
             'dialog_session_id' => $a->dialog_session_id,
             'messages' => $a->dialogSession?->messages()
                 ->orderBy('id')

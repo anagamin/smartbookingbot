@@ -6,10 +6,29 @@ use App\Http\Controllers\Controller;
 use App\Models\BillingTransaction;
 use App\Services\YooKassaService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use RuntimeException;
 
 class BillingController extends Controller
 {
+    public function plans()
+    {
+        $plans = config('smartbooking.subscription_plans', []);
+
+        $out = [];
+        foreach ($plans as $id => $row) {
+            $out[] = [
+                'id' => $id,
+                'title' => $row['title'],
+                'months' => $row['months'],
+                'amount_kopecks' => $row['amount_kopecks'],
+                'price_rub' => (int) ($row['amount_kopecks'] / 100),
+            ];
+        }
+
+        return response()->json(['plans' => $out]);
+    }
+
     public function transactions(Request $request)
     {
         return BillingTransaction::query()
@@ -19,15 +38,15 @@ class BillingController extends Controller
             ->get();
     }
 
-    public function createTopUp(Request $request, YooKassaService $yooKassa)
+    public function createCheckout(Request $request, YooKassaService $yooKassa)
     {
         $data = $request->validate([
-            'amount_kopecks' => ['required', 'integer', 'min:100'],
+            'plan_key' => ['required', 'string', 'max:32', Rule::in(array_keys(config('smartbooking.subscription_plans', [])))],
             'return_url' => ['required', 'url'],
         ]);
 
         try {
-            $result = $yooKassa->createTopUpPayment($request->user(), $data['amount_kopecks'], $data['return_url']);
+            $result = $yooKassa->createPlanPayment($request->user(), $data['plan_key'], $data['return_url']);
         } catch (RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }

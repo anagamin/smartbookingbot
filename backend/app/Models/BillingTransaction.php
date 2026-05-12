@@ -11,6 +11,8 @@ class BillingTransaction extends Model
 
     public const TYPE_SUBSCRIPTION = 'subscription';
 
+    public const TYPE_PLAN_PURCHASE = 'plan_purchase';
+
     public const TYPE_ADJUSTMENT = 'adjustment';
 
     protected $fillable = [

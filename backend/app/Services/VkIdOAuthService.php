@@ -136,12 +136,14 @@ class VkIdOAuthService
             $safeEmail = 'vk_'.$vkId.'_'.Str::lower(Str::random(6)).'@vk.local';
         }
 
+        $trialEnd = now()->addDays((int) config('smartbooking.trial_days', 30));
         $user = User::query()->create([
             'name' => $name !== '' ? $name : 'VK '.$vkId,
             'email' => $safeEmail,
             'password' => Str::password(32),
-            'trial_ends_at' => now()->addDays((int) config('smartbooking.trial_days', 30)),
-            'next_billing_at' => now()->addDays((int) config('smartbooking.trial_days', 30)),
+            'trial_ends_at' => $trialEnd,
+            'next_billing_at' => $trialEnd,
+            'subscription_ends_at' => $trialEnd,
         ]);
 
         SocialAccount::query()->create([

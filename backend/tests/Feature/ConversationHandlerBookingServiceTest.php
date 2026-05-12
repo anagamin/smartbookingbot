@@ -27,12 +27,15 @@ class ConversationHandlerBookingServiceTest extends DatabaseTestCase
         parent::tearDown();
     }
 
-    private function makeAiBookingConfirm(?string $service = null): AiIntentResult
+    private function makeAiBookingConfirm(?string $service = null, array $services = []): AiIntentResult
     {
+        $list = $services !== [] ? $services : ($service !== null ? [$service] : []);
+
         return new AiIntentResult(
             intent: 'booking_confirm',
             confidence: 0.95,
-            service: $service,
+            service: $list[0] ?? null,
+            services: $list,
             date: '2026-06-05',
             dateEnd: null,
             time: '10:00',
@@ -228,5 +231,66 @@ class ConversationHandlerBookingServiceTest extends DatabaseTestCase
         $this->assertNotNull($appointment);
         $this->assertSame($only->id, $appointment->service_id);
         $this->assertTrue($appointment->ends_at->eq(Carbon::parse('2026-06-05 10:45:00')));
+    }
+
+    public function test_booking_combo_from_dialog_sums_duration_and_stores_extra_services(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-06-01 12:00:00'));
+
+        $user = User::factory()->create();
+        $this->seedOwnerWithSchedule($user);
+
+        $manicure = Service::query()->create([
+            'user_id' => $user->id,
+            'title' => 'Маникюр',
+            'duration_minutes' => 90,
+            'price_kopecks' => 1000,
+            'is_active' => true,
+        ]);
+        $pedicure = Service::query()->create([
+            'user_id' => $user->id,
+            'title' => 'Педикюр',
+            'duration_minutes' => 60,
+            'price_kopecks' => 2000,
+            'is_active' => true,
+        ]);
+
+        $vk = SocialAccount::query()->create([
+            'user_id' => $user->id,
+            'provider' => SocialAccount::PROVIDER_VK_GROUP,
+            'provider_user_id' => 'g1',
+            'access_token' => 'token',
+        ]);
+
+        $dialog = Dialog::query()->create([
+            'user_id' => $user->id,
+            'social_account_id' => $vk->id,
+            'external_client_id' => '100',
+            'client_name' => 'Клиент',
+        ]);
+
+        $session = DialogSession::query()->create([
+            'dialog_id' => $dialog->id,
+            'status' => DialogSession::STATUS_OPEN,
+            'started_at' => now(),
+        ]);
+
+        Message::query()->create([
+            'dialog_id' => $dialog->id,
+            'dialog_session_id' => $session->id,
+            'direction' => Message::DIRECTION_INBOUND,
+            'text' => 'Нужны маникюр и педикюр на пятницу в 10:00',
+        ]);
+
+        $handler = $this->bindMocks($this->makeAiBookingConfirm(null));
+        $handler->handleInbound($user, $vk, $dialog, $session, 'Да, подтверждаю это время', 1);
+
+        $appointment = Appointment::query()->where('user_id', $user->id)->first();
+        $this->assertNotNull($appointment);
+        $this->assertSame($manicure->id, $appointment->service_id);
+        $this->assertSame([$pedicure->id], $appointment->extra_service_ids ?? []);
+        $this->assertTrue($appointment->starts_at->eq(Carbon::parse('2026-06-05 10:00:00')));
+        $this->assertTrue($appointment->ends_at->eq(Carbon::parse('2026-06-05 12:30:00')));
+        $this->assertSame(3000, (int) $appointment->price_kopecks);
     }
 }

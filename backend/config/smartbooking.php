@@ -7,8 +7,19 @@ $oauthCallbackPath = static function (string $provider): string {
 };
 
 return [
+    /** @deprecated Used only for migrating old balance-based access to subscription_ends_at. */
     'subscription_price_kopecks' => (int) env('SUBSCRIPTION_PRICE_KOPECKS', 100_000),
     'trial_days' => (int) env('TRIAL_DAYS', 30),
+    /**
+     * Tariffs: payment extends subscription_ends_at from max(now, current end).
+     *
+     * @var array<string, array{title: string, months: int, amount_kopecks: int}>
+     */
+    'subscription_plans' => [
+        '1m' => ['title' => '1 месяц', 'months' => 1, 'amount_kopecks' => 100_000],
+        '6m' => ['title' => '6 месяцев', 'months' => 6, 'amount_kopecks' => 500_000],
+        '12m' => ['title' => '12 месяцев', 'months' => 12, 'amount_kopecks' => 800_000],
+    ],
     'gptunnel' => [
         'base_url' => rtrim(env('GPTUNNEL_BASE_URL', 'https://gptunnel.ru/v1'), '/'),
         'api_key' => env('GPTUNNEL_API_KEY', ''),

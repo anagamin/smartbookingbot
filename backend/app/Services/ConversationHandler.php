@@ -90,7 +90,7 @@ class ConversationHandler
     ): ?string {
         return match ($ai->intent) {
             'informational' => $this->handleInformational($owner, $ai),
-            'availability_request' => $this->handleAvailability($owner, $ai),
+            'availability_request' => $this->handleAvailability($owner, $session, $ai),
             'booking_confirm' => $this->handleBookingConfirm($owner, $dialog, $session, $ai),
             'booking_cancel' => $this->handleBookingCancel($owner, $dialog, $session, $ai),
             'chit_chat' => $ai->reply !== '' ? $ai->reply : 'Пожалуйста! Если понадобится запись — напишите.',
@@ -109,10 +109,15 @@ class ConversationHandler
         return $ai->reply !== '' ? $ai->reply : null;
     }
 
-    private function handleAvailability(User $owner, AiIntentResult $ai): string
+    private function handleAvailability(User $owner, DialogSession $session, AiIntentResult $ai): string
     {
-        $service = $ai->service ? $this->slots->findServiceByTitle($owner, $ai->service) : null;
-        $duration = $service?->duration_minutes ?? 60;
+        $resolved = $this->resolveServicesFromContext($owner, $session, $ai);
+        $duration = $resolved->isEmpty()
+            ? 60
+            : max(1, $resolved->sum(fn (Service $s) => (int) $s->duration_minutes));
+        $singleService = $resolved->count() === 1 ? $resolved->first() : null;
+        $durationOverride = $resolved->count() > 1 ? $duration : null;
+
         $date = $this->normalizeAiDate($ai->date);
         $time = $ai->time !== null && $ai->time !== '' ? $ai->time : null;
 
@@ -140,12 +145,13 @@ class ConversationHandler
         $suggestions = $date !== null
             ? $this->slots->suggestSlotsInDateRange(
                 $owner,
-                $service,
+                $singleService,
                 Carbon::parse($date),
                 Carbon::parse($rangeEnd ?? $date),
                 80,
+                $durationOverride,
             )
-            : $this->slots->suggestSlots($owner, $service);
+            : $this->slots->suggestSlots($owner, $singleService, 14, 24, $durationOverride);
 
         if ($suggestions === []) {
             return 'Свободных окон в ближайшие дни не нашла (проверьте график работы в кабинете или напишите желаемый день — уточню у мастера).';
@@ -185,8 +191,8 @@ class ConversationHandler
 
             return 'Уточните, пожалуйста, дату и время записи одним сообщением.';
         }
-        $service = $this->resolveServiceForBooking($owner, $session, $ai);
-        if ($service === null) {
+        $services = $this->resolveServicesFromContext($owner, $session, $ai);
+        if ($services->isEmpty()) {
             $active = Service::query()
                 ->where('user_id', $owner->id)
                 ->where('is_active', true)
@@ -200,7 +206,7 @@ class ConversationHandler
 
             return $this->buildAskServiceMessage($active);
         }
-        $duration = max(1, (int) $service->duration_minutes);
+        $duration = max(1, $services->sum(fn (Service $s) => (int) $s->duration_minutes));
         $start = Carbon::parse($resolvedDate.' '.$ai->time);
         $end = $start->copy()->addMinutes($duration);
         if (! $this->slots->isIntervalWithinWorkingHours($owner, $start, $end)) {
@@ -209,10 +215,13 @@ class ConversationHandler
         if (! $this->slots->isSlotFree($owner, $start, $end)) {
             return 'Это время уже занято. Предлагаю другое — напишите удобный день, я пришлю свободные слоты.';
         }
-        $price = $service->price_kopecks;
+        $price = $services->sum(fn (Service $s) => (int) ($s->price_kopecks ?? 0));
+        $orderedIds = $services->pluck('id')->values()->all();
+        $primaryId = array_shift($orderedIds);
         $appointment = Appointment::query()->create([
             'user_id' => $owner->id,
-            'service_id' => $service->id,
+            'service_id' => $primaryId,
+            'extra_service_ids' => $orderedIds === [] ? null : $orderedIds,
             'dialog_session_id' => $session->id,
             'client_name' => $dialog->client_name ?? 'Клиент VK',
             'starts_at' => $start,
@@ -256,9 +265,11 @@ class ConversationHandler
     }
 
     /**
-     * Услуга обязательна: из поля AI, из текста сессии (история чата) или одна активная услуга в кабинете.
+     * Активные услуги для записи/слотов: из полей AI (несколько названий), из текста сессии или одна активная в кабинете.
+     *
+     * @return Collection<int, Service>
      */
-    private function resolveServiceForBooking(User $owner, DialogSession $session, AiIntentResult $ai): ?Service
+    private function resolveServicesFromContext(User $owner, DialogSession $session, AiIntentResult $ai): Collection
     {
         $active = Service::query()
             ->where('user_id', $owner->id)
@@ -268,19 +279,23 @@ class ConversationHandler
             ->values();
 
         if ($active->isEmpty()) {
-            return null;
+            return collect();
         }
 
         if ($active->count() === 1) {
-            return $active->first();
+            return collect([$active->first()]);
         }
 
-        $aiService = $ai->service !== null && trim($ai->service) !== '' ? trim($ai->service) : null;
-        if ($aiService !== null) {
-            $byTitle = $this->slots->findServiceByTitle($owner, $aiService);
-            if ($byTitle !== null) {
-                return $byTitle;
+        $resolved = collect();
+        foreach ($ai->services as $title) {
+            $s = $this->slots->findServiceByTitle($owner, $title);
+            if ($s !== null) {
+                $resolved->push($s);
             }
+        }
+        $resolved = $resolved->unique('id')->values();
+        if ($resolved->isNotEmpty()) {
+            return $resolved;
         }
 
         $corpus = Message::query()
@@ -290,14 +305,11 @@ class ConversationHandler
             ->map(fn (string $t) => mb_strtolower($t))
             ->implode("\n");
 
-        if ($corpus !== '') {
-            $fromDialog = $this->slots->findServiceInDialogText($owner, $corpus);
-            if ($fromDialog !== null) {
-                return $fromDialog;
-            }
+        if ($corpus === '') {
+            return collect();
         }
 
-        return null;
+        return $this->slots->findServicesInDialogText($owner, $corpus);
     }
 
     /**
@@ -309,7 +321,7 @@ class ConversationHandler
             fn (Service $s) => $s->title.' ('.$this->formatDurationHuman((int) $s->duration_minutes).')',
         )->implode('; ');
 
-        return 'Чтобы зафиксировать запись, напишите услугу — от неё зависит длительность. Доступно: '.$parts.'. Например: «подтверждаю, маникюр, это время».';
+        return 'Чтобы зафиксировать запись, укажите услугу или несколько — от этого зависит длительность. Доступно: '.$parts.'. Например: «подтверждаю, маникюр и педикюр, это время» или перечислите услуги через запятую.';
     }
 
     private function formatDurationHuman(int $minutes): string
@@ -352,7 +364,8 @@ class ConversationHandler
 Ты классификатор сообщений клиента мастера (маникюр, массаж и т.п.). Ответь СТРОГО одним JSON-объектом без markdown, поля:
 - intent: один из: informational, availability_request, booking_confirm, booking_cancel, chit_chat, other
 - confidence: число 0..1
-- service: string или null (краткое название услуги если применимо)
+- service: string или null (одна услуга или краткое описание; для обратной совместимости)
+- services: массив строк — названия услуг из массива services во входных данных (можно 0, 1 или несколько). Если клиент хочет несколько услуг подряд в один визит — перечисли каждую отдельной строкой в этом массиве (например ["Маникюр","Педикюр"]). Если одна услуга — либо одна строка в services, либо только service.
 - date: "Y-m-d" или null
 - date_end: "Y-m-d" или null — последний день диапазона включительно, если речь о нескольких днях; иначе null (или то же, что date)
 - time: "H:i" или null
@@ -361,8 +374,8 @@ class ConversationHandler
 
 Правила:
 - informational: вопрос о цене, услуге, адресе из контекста
-- availability_request: когда можно, свободные слоты; если клиент спрашивает про конкретную дату/время («завтра в 16:00», «5 мая в 10:30») — обязательно заполни поля date (Y-m-d) и time (H:i), вычислив дату от reference.server_today (завтра = server_today + 1 день). Если указан только день или период без времени («5 мая», «в выходные», «на следующей неделе») — time=null; для одного дня date_end=null; для диапазона заполни date (первый день) и date_end (последний). «Выходные» — ближайшая суббота–воскресенье от server_today (если сегодня суббота/воскресенье — текущие выходные). «На следующей неделе» — календарная неделя после той, в которой server_today (пн–вс этой «следующей» недели).
-- booking_confirm: явное согласие на конкретные дату и время; поле service — точное или узнаваемое название одной из записей из массива services (по latest_message и history). Если услугу нельзя однозначно сопоставить с одной позицией из services — service: null (клиенту уточнят в чате).
+- availability_request: когда можно, свободные слоты; если визит из нескольких услуг — заполни services всеми (длительность для слотов = сумма duration_minutes). Если клиент спрашивает про конкретную дату/время («завтра в 16:00», «5 мая в 10:30») — обязательно заполни поля date (Y-m-d) и time (H:i), вычислив дату от reference.server_today (завтра = server_today + 1 день). Если указан только день или период без времени («5 мая», «в выходные», «на следующей неделе») — time=null; для одного дня date_end=null; для диапазона заполни date (первый день) и date_end (последний). «Выходные» — ближайшая суббота–воскресенье от server_today (если сегодня суббота/воскресенье — текущие выходные). «На следующей неделе» — календарная неделя после той, в которой server_today (пн–вс этой «следующей» недели).
+- booking_confirm: явное согласие на конкретные дату и время; заполни services списком услуг визита (одна или несколько), каждая должна узнаваться по массиву services из контекста. Если несколько услуг — суммарная длительность = сумма duration_minutes. Если нельзя сопоставить ни одну — services: [] и service: null.
 - booking_cancel: отмена записи
 - chit_chat: спасибо, ок, до связи
 - other: всё остальное

@@ -20,14 +20,16 @@ class AuthController extends Controller
         ]);
 
         $trialDays = (int) config('smartbooking.trial_days', 30);
+        $trialEnd = now()->addDays($trialDays);
         $user = User::query()->create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => $data['password'],
             'sex' => $data['sex'] ?? null,
             'balance_kopecks' => 0,
-            'trial_ends_at' => now()->addDays($trialDays),
-            'next_billing_at' => now()->addDays($trialDays),
+            'trial_ends_at' => $trialEnd,
+            'next_billing_at' => $trialEnd,
+            'subscription_ends_at' => $trialEnd,
             'bot_paused' => false,
         ]);
 

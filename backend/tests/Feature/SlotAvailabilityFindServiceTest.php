@@ -58,4 +58,30 @@ class SlotAvailabilityFindServiceTest extends DatabaseTestCase
         $this->assertNotNull($found);
         $this->assertSame('Маникюр', $found->title);
     }
+
+    public function test_find_services_in_dialog_returns_multiple_ordered_by_occurrence(): void
+    {
+        $user = User::factory()->create();
+        $m = Service::query()->create([
+            'user_id' => $user->id,
+            'title' => 'Маникюр',
+            'duration_minutes' => 90,
+            'price_kopecks' => 0,
+            'is_active' => true,
+        ]);
+        $p = Service::query()->create([
+            'user_id' => $user->id,
+            'title' => 'Педикюр',
+            'duration_minutes' => 60,
+            'price_kopecks' => 0,
+            'is_active' => true,
+        ]);
+
+        $slots = app(SlotAvailabilityService::class);
+        $found = $slots->findServicesInDialogText($user, 'Запишите на маникюр и педикюр на пятницу');
+
+        $this->assertCount(2, $found);
+        $this->assertTrue($found->get(0)->is($m));
+        $this->assertTrue($found->get(1)->is($p));
+    }
 }

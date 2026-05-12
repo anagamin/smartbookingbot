@@ -8,12 +8,11 @@ use Tests\DatabaseTestCase;
 
 class ProcessSubscriptionCommandTest extends DatabaseTestCase
 {
-    public function test_pauses_bot_when_balance_insufficient_after_trial(): void
+    public function test_pauses_bot_when_subscription_expired(): void
     {
         $user = User::factory()->create([
-            'balance_kopecks' => 0,
-            'trial_ends_at' => now()->subDay(),
-            'next_billing_at' => now()->subHour(),
+            'subscription_ends_at' => now()->subHour(),
+            'trial_ends_at' => now()->subMonth(),
             'bot_paused' => false,
         ]);
 
@@ -23,13 +22,11 @@ class ProcessSubscriptionCommandTest extends DatabaseTestCase
         $this->assertTrue($user->bot_paused);
     }
 
-    public function test_deducts_when_balance_sufficient(): void
+    public function test_does_not_pause_when_subscription_active(): void
     {
-        $price = (int) config('smartbooking.subscription_price_kopecks', 100_000);
         $user = User::factory()->create([
-            'balance_kopecks' => $price + 500,
+            'subscription_ends_at' => now()->addMonth(),
             'trial_ends_at' => now()->subDay(),
-            'next_billing_at' => now()->subHour(),
             'bot_paused' => false,
         ]);
 
@@ -37,8 +34,5 @@ class ProcessSubscriptionCommandTest extends DatabaseTestCase
 
         $user->refresh();
         $this->assertFalse($user->bot_paused);
-        $this->assertSame(500, $user->balance_kopecks);
-        $this->assertNotNull($user->next_billing_at);
-        $this->assertTrue($user->next_billing_at->isFuture());
     }
 }

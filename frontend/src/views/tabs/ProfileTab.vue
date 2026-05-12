@@ -26,7 +26,7 @@ const botStatusLine = computed(() => {
     return 'Бот отвечает клиентам в сообщениях сообщества.'
   }
   if (!subscriptionActive.value) {
-    return 'Чтобы снова включить бота, нужна активная подписка или триальный период (пополните баланс на сумму абонемента).'
+    return 'Чтобы снова включить бота, нужен активный срок подписки. Продлите доступ на странице «Оплата».'
   }
   return 'Бот не отвечает. Включите переключатель, когда будете готовы.'
 })
@@ -213,7 +213,7 @@ async function detachVkGroup(): Promise<void> {
   vkMsgIsError.value = false
   vkDetaching.value = true
   try {
-    await http.delete('/vk/group')
+    await http.post('/vk/group/detach')
     await loadVkGroup()
     vkMsg.value = 'Сообщество откреплено. Можно подключить другое.'
   } catch (e: unknown) {

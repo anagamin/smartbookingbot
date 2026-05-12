@@ -19,6 +19,7 @@ use Laravel\Sanctum\HasApiTokens;
     'balance_kopecks',
     'trial_ends_at',
     'next_billing_at',
+    'subscription_ends_at',
     'bot_paused',
     'services_description',
 ])]
@@ -35,6 +36,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'trial_ends_at' => 'datetime',
             'next_billing_at' => 'datetime',
+            'subscription_ends_at' => 'datetime',
             'bot_paused' => 'boolean',
         ];
     }
@@ -90,13 +92,34 @@ class User extends Authenticatable
 
     public function hasActiveSubscription(): bool
     {
-        if ($this->isInTrialPeriod()) {
-            return true;
+        return $this->subscription_ends_at !== null
+            && $this->subscription_ends_at->isFuture();
+    }
+
+    public function daysUntilSubscriptionEnds(): ?int
+    {
+        if ($this->subscription_ends_at === null) {
+            return null;
         }
 
-        $price = (int) config('smartbooking.subscription_price_kopecks', 100_000);
+        if (! $this->hasActiveSubscription()) {
+            return 0;
+        }
 
-        return $this->balance_kopecks >= $price;
+        return max(0, (int) now()->diffInDays($this->subscription_ends_at, false));
+    }
+
+    public function extendSubscriptionByMonths(int $months): void
+    {
+        $base = now();
+        if ($this->subscription_ends_at !== null && $this->subscription_ends_at->gt($base)) {
+            $base = $this->subscription_ends_at->copy();
+        }
+
+        $newEnd = $base->copy()->addMonths($months);
+        $this->subscription_ends_at = $newEnd;
+        $this->next_billing_at = $newEnd;
+        $this->save();
     }
 
     public function canRunBot(): bool
@@ -119,8 +142,12 @@ class User extends Authenticatable
             'balance_kopecks' => $this->balance_kopecks,
             'trial_ends_at' => $this->trial_ends_at?->toIso8601String(),
             'next_billing_at' => $this->next_billing_at?->toIso8601String(),
+            'subscription_ends_at' => $this->subscription_ends_at?->toIso8601String(),
             'bot_paused' => $this->bot_paused,
             'subscription_active' => $this->hasActiveSubscription(),
+            'trial_active' => $this->isInTrialPeriod(),
+            'days_until_subscription_ends' => $this->daysUntilSubscriptionEnds(),
+            'bot_responds_to_clients' => $this->canRunBot(),
             'services_description' => $this->services_description,
         ];
     }

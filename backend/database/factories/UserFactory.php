@@ -24,6 +24,8 @@ class UserFactory extends Factory
      */
     public function definition(): array
     {
+        $trial = now()->addDays(30);
+
         return [
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
@@ -32,8 +34,9 @@ class UserFactory extends Factory
             'remember_token' => Str::random(10),
             'sex' => null,
             'balance_kopecks' => 0,
-            'trial_ends_at' => now()->addDays(30),
-            'next_billing_at' => now()->addDays(30),
+            'trial_ends_at' => $trial,
+            'next_billing_at' => $trial,
+            'subscription_ends_at' => $trial,
             'bot_paused' => false,
             'services_description' => null,
         ];

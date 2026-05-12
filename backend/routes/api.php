@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ContactMessageController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OAuthController;
@@ -23,6 +24,9 @@ Route::get('/oauth/yandex/callback', [OAuthController::class, 'yandexCallback'])
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+
+Route::get('/contact-messages', [ContactMessageController::class, 'index']);
+Route::post('/contact-messages', [ContactMessageController::class, 'store']);
 
 Route::get('/oauth/vk/start', [OAuthController::class, 'vkStart']);
 Route::get('/oauth/yandex/start', [OAuthController::class, 'yandexStart']);

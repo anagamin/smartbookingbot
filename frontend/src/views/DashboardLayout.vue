@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import http from '@/api/http'
+import { cabinetBrowserPushActive } from '@/lib/cabinetBrowserPush'
 import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
@@ -22,8 +23,6 @@ const user = ref<CabinetUser | null>(null)
 const unreadCount = ref(0)
 let lastUnreadBaseline = -1
 let pollTimer: ReturnType<typeof setInterval> | null = null
-
-const supportsBrowserPush = typeof globalThis !== 'undefined' && 'Notification' in globalThis
 
 async function loadUser() {
   const { data } = await http.get<CabinetUser>('/user')
@@ -48,7 +47,7 @@ async function pollUnreadSnapshot() {
 }
 
 function pushBrowserNotification(title: string, body: string) {
-  if (!('Notification' in window) || Notification.permission !== 'granted') {
+  if (!cabinetBrowserPushActive()) {
     return
   }
   try {
@@ -56,13 +55,6 @@ function pushBrowserNotification(title: string, body: string) {
   } catch {
     /* ignore */
   }
-}
-
-async function requestBrowserNotifications() {
-  if (!('Notification' in window)) {
-    return
-  }
-  await Notification.requestPermission()
 }
 
 async function logout() {
@@ -205,15 +197,6 @@ const showPausedWithSubBanner = computed(
               {{ unreadCount > 99 ? '99+' : unreadCount }}
             </span>
           </RouterLink>
-          <button
-            v-if="supportsBrowserPush"
-            type="button"
-            class="rounded-lg border border-white/15 px-2 py-1 text-xs text-slate-400 hover:bg-white/5 hover:text-slate-200"
-            title="Показывать всплывающие уведомления браузера при новых сообщениях в кабинете"
-            @click="requestBrowserNotifications"
-          >
-            Пуш в браузере
-          </button>
         </nav>
         <div class="flex flex-wrap items-center justify-end gap-3 text-sm">
           <RouterLink

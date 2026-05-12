@@ -9,7 +9,12 @@ import FullCalendar from '@fullcalendar/vue3'
 import Multiselect from '@vueform/multiselect'
 import { onMounted, ref } from 'vue'
 
-/** Must match `timeZone` in calendarOptions — API stores datetimes in app timezone (Europe/Moscow). */
+/**
+ * Must match `timeZone` in calendarOptions — API stores datetimes in app timezone (Europe/Moscow).
+ * Without `@fullcalendar/moment-timezone` (or Luxon TZ), named zones use FullCalendar "UTC-coercion":
+ * the clicked slot's wall time is read via UTC getters on `Date`, not via `toISOString()` + IANA format
+ * (that would treat the coerced clock as a real UTC instant and shift by offset — e.g. 12:00 → 15:00 MSK).
+ */
 const CALENDAR_TIMEZONE = 'Europe/Moscow'
 
 const calendarRef = ref<InstanceType<typeof FullCalendar> | null>(null)
@@ -41,6 +46,12 @@ function appointmentServiceIdsFromDetail(data: {
     ids.push(id)
   }
   return ids
+}
+
+/** Naive `datetime-local` string from a FullCalendar API `Date` under named-TZ UTC-coercion (see CALENDAR_TIMEZONE). */
+function fullCalendarCoercedDateToDatetimeLocal(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`
 }
 
 function isoToDatetimeLocalInTimeZone(iso: string, timeZone: string): string {
@@ -147,7 +158,7 @@ function onDateClick(arg: { date: Date; dateStr: string; allDay: boolean }) {
   const starts_at =
     arg.allDay || !arg.dateStr.includes('T')
       ? `${arg.dateStr.slice(0, 10)}T10:00`
-      : isoToDatetimeLocalInTimeZone(arg.date.toISOString(), CALENDAR_TIMEZONE)
+      : fullCalendarCoercedDateToDatetimeLocal(arg.date)
   const ends_at = addMinutesToDatetimeLocal(starts_at, 60)
   form.value = {
     client_name: '',

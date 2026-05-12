@@ -244,17 +244,28 @@ class ConversationHandler
         DialogSession $session,
         AiIntentResult $ai,
     ): string {
-        $appointment = Appointment::query()
-            ->where('user_id', $owner->id)
-            ->where('status', Appointment::STATUS_CONFIRMED)
-            ->whereHas('dialogSession', fn ($q) => $q->where('dialog_id', $dialog->id))
-            ->orderByDesc('starts_at')
-            ->first();
-        if (! $appointment) {
+        $candidates = $this->collectCancelCandidates($owner, $dialog, $session);
+        $countBeforeAi = $candidates->count();
+        $candidates = $this->filterCancelCandidatesByAi($candidates, $ai);
+
+        if ($candidates->isEmpty()) {
+            if ($countBeforeAi > 0 && $this->normalizeAiDate($ai->date) !== null) {
+                $this->notifyOwner($owner, 'Отмена записи', 'Клиент указал дату, но подходящей активной записи не найдено.');
+
+                return 'Не нашла запись на указанную дату. Напишите дату и время, как в записи, или мастер поможет вручную.';
+            }
             $this->notifyOwner($owner, 'Отмена записи', 'Клиент просит отмену, но активной записи не найдено.');
 
             return 'Не нашла активную запись на ваше имя. Если запись была — мастер свяжется с вами.';
         }
+
+        if ($candidates->count() > 1) {
+            $this->notifyOwner($owner, 'Отмена записи', 'У клиента несколько предстоящих записей, связанных с этим чатом; нужна дата и время для отмены.');
+
+            return 'У вас несколько предстоящих записей. Напишите, пожалуйста, дату и время визита, который нужно отменить.';
+        }
+
+        $appointment = $candidates->first();
         $appointment->update(['status' => Appointment::STATUS_CANCELLED]);
         $session->update(['status' => DialogSession::STATUS_CLOSED, 'closed_at' => now(), 'intent' => 'cancel']);
         $this->activityLogger->log($owner, 'appointment_cancelled', 'Отмена #'.$appointment->id, [
@@ -262,6 +273,74 @@ class ConversationHandler
         ]);
 
         return 'Запись отменена. Будем рады видеть вас в другой раз!';
+    }
+
+    /**
+     * @return Collection<int, Appointment>
+     */
+    private function collectCancelCandidates(User $owner, Dialog $dialog, DialogSession $session): Collection
+    {
+        $base = fn () => Appointment::query()
+            ->where('user_id', $owner->id)
+            ->where('status', Appointment::STATUS_CONFIRMED)
+            ->where('ends_at', '>=', now());
+
+        $bySession = $base()->where('dialog_session_id', $session->id)->orderBy('starts_at')->get();
+        if ($bySession->isNotEmpty()) {
+            return collect($bySession->all());
+        }
+
+        $byDialog = $base()->whereHas('dialogSession', fn ($q) => $q->where('dialog_id', $dialog->id))
+            ->orderBy('starts_at')
+            ->get();
+        if ($byDialog->isNotEmpty()) {
+            return collect($byDialog->all());
+        }
+
+        $name = trim((string) $dialog->client_name);
+        if ($name === '') {
+            return collect();
+        }
+
+        $manual = $base()->whereNull('dialog_session_id')
+            ->whereRaw('LOWER(TRIM(client_name)) = ?', [mb_strtolower($name)])
+            ->orderBy('starts_at')
+            ->get();
+
+        return collect($manual->all());
+    }
+
+    /**
+     * @param  Collection<int, Appointment>  $candidates
+     * @return Collection<int, Appointment>
+     */
+    private function filterCancelCandidatesByAi(Collection $candidates, AiIntentResult $ai): Collection
+    {
+        if ($candidates->isEmpty()) {
+            return $candidates;
+        }
+
+        $date = $this->normalizeAiDate($ai->date);
+        if ($date === null) {
+            return $candidates;
+        }
+
+        $byDate = $candidates->filter(fn (Appointment $a) => $a->starts_at->toDateString() === $date)->values();
+        if ($byDate->isEmpty()) {
+            return $byDate;
+        }
+
+        if ($ai->time === null || $ai->time === '') {
+            return $byDate;
+        }
+
+        try {
+            $targetTime = Carbon::parse('2000-01-01 '.$ai->time)->format('H:i');
+        } catch (Throwable) {
+            return $byDate;
+        }
+
+        return $byDate->filter(fn (Appointment $a) => $a->starts_at->format('H:i') === $targetTime)->values();
     }
 
     /**

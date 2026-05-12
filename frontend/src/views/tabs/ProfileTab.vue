@@ -6,7 +6,6 @@ import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 const name = ref('')
 const sex = ref('')
 const services_description = ref('')
-const socials = ref<Array<{ id: number; provider: string }>>([])
 const msg = ref('')
 const msgIsError = ref(false)
 
@@ -99,8 +98,6 @@ async function load(): Promise<void> {
   services_description.value = u.data.services_description || ''
   botPaused.value = u.data.bot_paused
   subscriptionActive.value = u.data.subscription_active
-  const s = await http.get('/social-accounts')
-  socials.value = s.data
   await loadVkGroup()
 }
 
@@ -240,16 +237,6 @@ async function copyWebhookUrl(): Promise<void> {
   }
 }
 
-async function startVkLink(): Promise<void> {
-  const { data } = await http.get('/oauth/vk/link/start')
-  window.location.href = data.url
-}
-
-async function startYandexLink(): Promise<void> {
-  const { data } = await http.get('/oauth/yandex/link/start')
-  window.location.href = data.url
-}
-
 onMounted(() => {
   void load()
 })
@@ -322,22 +309,6 @@ onBeforeUnmount(() => {
       </div>
       <button type="submit" class="rounded-lg bg-indigo-500 px-4 py-2 text-sm text-white">Сохранить профиль</button>
     </form>
-
-    <div class="rounded-xl border border-white/10 bg-slate-900/40 p-6">
-      <h3 class="font-medium text-white">Соцсети</h3>
-      <ul class="mt-2 text-sm text-slate-400">
-        <li v-for="s in socials" :key="s.id">{{ s.provider }} — привязан</li>
-        <li v-if="!socials.length">Пока нет привязанных аккаунтов</li>
-      </ul>
-      <div class="mt-4 flex flex-wrap gap-2">
-        <button type="button" class="rounded-lg border border-white/15 px-3 py-2 text-sm" @click="startVkLink">
-          Привязать VK ID
-        </button>
-        <button type="button" class="rounded-lg border border-white/15 px-3 py-2 text-sm" @click="startYandexLink">
-          Привязать Яндекс
-        </button>
-      </div>
-    </div>
 
     <section class="space-y-6" aria-labelledby="vk-community-heading">
       <h3 id="vk-community-heading" class="text-lg font-semibold text-white">Сообщество ВКонтакте для бота</h3>

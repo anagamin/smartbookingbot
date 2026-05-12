@@ -213,7 +213,7 @@ async function detachVkGroup(): Promise<void> {
   vkMsgIsError.value = false
   vkDetaching.value = true
   try {
-    await http.post('/vk/group/detach')
+    await http.post('/vk/group', { detach: true })
     await loadVkGroup()
     vkMsg.value = 'Сообщество откреплено. Можно подключить другое.'
   } catch (e: unknown) {

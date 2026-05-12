@@ -43,6 +43,10 @@ class VkIntegrationController extends Controller
 
     public function storeGroup(Request $request)
     {
+        if ($request->boolean('detach')) {
+            return $this->destroyGroup($request);
+        }
+
         $data = $request->validate([
             'group_id' => ['required', 'string', 'max:32'],
             'access_token' => ['required', 'string'],

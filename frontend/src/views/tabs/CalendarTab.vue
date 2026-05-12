@@ -6,7 +6,7 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import FullCalendar from '@fullcalendar/vue3'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
 const calendarRef = ref<InstanceType<typeof FullCalendar> | null>(null)
 const services = ref<Array<{ id: number; title: string }>>([])
@@ -15,14 +15,51 @@ const modal = ref<'create' | 'edit' | null>(null)
 const editId = ref<number | null>(null)
 const form = ref({
   client_name: '',
-  service_id: null as number | null,
+  service_ids: [] as number[],
   starts_at: '',
   ends_at: '',
-  price_kopecks: '' as string | number,
+  price_rub: '' as string | number,
   status: 'confirmed' as 'confirmed' | 'cancelled',
 })
 const sessionMessages = ref<Array<{ direction: string; text: string; created_at: string }>>([])
-const extraServicesLabel = ref('')
+
+const orderedServices = computed(() => {
+  const list = services.value
+  const byId = new Map(list.map((s) => [s.id, s]))
+  const chosen: Array<{ id: number; title: string }> = []
+  for (const id of form.value.service_ids) {
+    const s = byId.get(id)
+    if (s) chosen.push(s)
+  }
+  const chosenSet = new Set(form.value.service_ids)
+  const rest = list.filter((s) => !chosenSet.has(s.id))
+  return [...chosen, ...rest]
+})
+
+function appointmentServiceIdsFromDetail(data: {
+  service_id?: number | null
+  service?: { id: number } | null
+  extra_service_ids?: Array<number | string> | null
+}): number[] {
+  const ids: number[] = []
+  const main = data.service_id ?? data.service?.id ?? null
+  if (main != null) ids.push(Number(main))
+  for (const raw of data.extra_service_ids ?? []) {
+    const id = Number(raw)
+    if (!Number.isFinite(id) || ids.includes(id)) continue
+    ids.push(id)
+  }
+  return ids
+}
+
+function onServicesMultiselectChange(e: Event) {
+  const el = e.target as HTMLSelectElement
+  const ids: number[] = []
+  for (let i = 0; i < el.selectedOptions.length; i++) {
+    ids.push(Number(el.selectedOptions[i].value))
+  }
+  form.value.service_ids = ids
+}
 
 async function loadServices() {
   const { data } = await http.get('/services')
@@ -49,13 +86,12 @@ function onDateClick(arg: { dateStr: string }) {
   editId.value = null
   form.value = {
     client_name: '',
-    service_id: null,
+    service_ids: [],
     starts_at: `${arg.dateStr}T10:00`,
     ends_at: `${arg.dateStr}T11:00`,
-    price_kopecks: '',
+    price_rub: '',
     status: 'confirmed',
   }
-  extraServicesLabel.value = ''
   sessionMessages.value = []
 }
 
@@ -63,26 +99,29 @@ async function onEventClick(arg: { event: { id: string } }) {
   modal.value = 'edit'
   editId.value = Number(arg.event.id)
   const { data } = await http.get(`/appointments/${editId.value}`)
-  const extras = (data.extra_services as Array<{ title: string }> | undefined) || []
-  extraServicesLabel.value = extras.map((x) => x.title).join(' + ')
   form.value = {
     client_name: data.client_name,
-    service_id: data.service_id ?? data.service?.id ?? null,
+    service_ids: appointmentServiceIdsFromDetail(data),
     starts_at: data.starts_at.slice(0, 16),
     ends_at: data.ends_at.slice(0, 16),
-    price_kopecks: data.price_kopecks ?? '',
+    price_rub: data.price_kopecks != null ? data.price_kopecks / 100 : '',
     status: data.status,
   }
   sessionMessages.value = data.messages || []
 }
 
 async function saveAppointment() {
+  const ids = form.value.service_ids
   const payload = {
     client_name: form.value.client_name,
-    service_id: form.value.service_id,
+    service_id: ids.length ? ids[0] : null,
+    extra_service_ids: ids.slice(1),
     starts_at: new Date(form.value.starts_at).toISOString(),
     ends_at: new Date(form.value.ends_at).toISOString(),
-    price_kopecks: form.value.price_kopecks === '' ? null : Number(form.value.price_kopecks),
+    price_kopecks:
+      form.value.price_rub === '' || form.value.price_rub === null || form.value.price_rub === undefined
+        ? null
+        : Math.round(Number(form.value.price_rub) * 100),
     status: form.value.status,
   }
   if (modal.value === 'create') {
@@ -142,12 +181,25 @@ onMounted(loadServices)
             <input v-model="form.client_name" class="mt-1 w-full rounded border border-white/10 bg-slate-950 px-2 py-1 text-white" />
           </div>
           <div>
-            <label class="text-xs text-slate-400">Услуга</label>
-            <select v-model.number="form.service_id" class="mt-1 w-full rounded border border-white/10 bg-slate-950 px-2 py-1 text-white">
-              <option :value="null">—</option>
-              <option v-for="s in services" :key="s.id" :value="s.id">{{ s.title }}</option>
+            <label class="text-xs text-slate-400">Услуги</label>
+            <select
+              multiple
+              size="8"
+              class="mt-1 min-h-[10rem] w-full rounded border border-white/10 bg-slate-950 px-2 py-1 text-white"
+              @change="onServicesMultiselectChange"
+            >
+              <option
+                v-for="s in orderedServices"
+                :key="s.id"
+                :value="s.id"
+                :selected="form.service_ids.includes(s.id)"
+              >
+                {{ s.title }}
+              </option>
             </select>
-            <p v-if="extraServicesLabel" class="mt-1 text-xs text-slate-500">Вместе с основной: {{ extraServicesLabel }}</p>
+            <p class="mt-1 text-xs text-slate-500">
+              Выбор нескольких услуг: Ctrl+клик. Порядок в списке — первая отмеченная сверху основная, ниже — вместе с ней.
+            </p>
           </div>
           <div>
             <label class="text-xs text-slate-400">Начало</label>
@@ -158,8 +210,14 @@ onMounted(loadServices)
             <input v-model="form.ends_at" type="datetime-local" class="mt-1 w-full rounded border border-white/10 bg-slate-950 px-2 py-1 text-white" />
           </div>
           <div>
-            <label class="text-xs text-slate-400">Цена (коп.)</label>
-            <input v-model="form.price_kopecks" type="number" class="mt-1 w-full rounded border border-white/10 bg-slate-950 px-2 py-1 text-white" />
+            <label class="text-xs text-slate-400">Цена (₽)</label>
+            <input
+              v-model="form.price_rub"
+              type="number"
+              min="0"
+              step="0.01"
+              class="mt-1 w-full rounded border border-white/10 bg-slate-950 px-2 py-1 text-white"
+            />
           </div>
           <div v-if="modal === 'edit'">
             <label class="text-xs text-slate-400">Статус</label>

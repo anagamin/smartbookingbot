@@ -59,13 +59,19 @@ class AppointmentController extends Controller
             'service_id' => $hasActiveServices
                 ? ['required', 'integer', 'exists:services,id']
                 : ['nullable', 'integer', 'exists:services,id'],
+            'extra_service_ids' => ['nullable', 'array'],
+            'extra_service_ids.*' => ['integer', 'distinct', 'exists:services,id'],
             'starts_at' => ['required', 'date'],
             'ends_at' => ['required', 'date', 'after:starts_at'],
             'price_kopecks' => ['nullable', 'integer', 'min:0'],
             'chat_excerpt' => ['nullable', 'string'],
         ]);
 
-        $this->validateServiceOwnership($request, $data['service_id'] ?? null);
+        $mainId = $data['service_id'] ?? null;
+        $extraIds = array_values(array_unique(array_map('intval', $data['extra_service_ids'] ?? [])));
+        $extraIds = array_values(array_filter($extraIds, fn (int $id) => $id !== $mainId));
+        $this->validateServiceOwnership($request, $mainId);
+        $this->validateExtraServiceOwnership($request, $extraIds);
 
         $start = Carbon::parse($data['starts_at']);
         $end = Carbon::parse($data['ends_at']);
@@ -77,6 +83,7 @@ class AppointmentController extends Controller
             'user_id' => $request->user()->id,
             'client_name' => $data['client_name'],
             'service_id' => $data['service_id'] ?? null,
+            'extra_service_ids' => $extraIds === [] ? null : $extraIds,
             'starts_at' => $data['starts_at'],
             'ends_at' => $data['ends_at'],
             'price_kopecks' => $data['price_kopecks'] ?? null,
@@ -109,12 +116,22 @@ class AppointmentController extends Controller
         $data = $request->validate([
             'client_name' => ['sometimes', 'string', 'max:255'],
             'service_id' => ['nullable', 'exists:services,id'],
+            'extra_service_ids' => ['nullable', 'array'],
+            'extra_service_ids.*' => ['integer', 'distinct', 'exists:services,id'],
             'starts_at' => ['sometimes', 'date'],
             'ends_at' => ['sometimes', 'date', 'after:starts_at'],
             'price_kopecks' => ['nullable', 'integer', 'min:0'],
             'chat_excerpt' => ['nullable', 'string'],
             'status' => ['sometimes', 'in:confirmed,cancelled'],
         ]);
+
+        $mainId = array_key_exists('service_id', $data) ? $data['service_id'] : $appointment->service_id;
+        if (array_key_exists('extra_service_ids', $data)) {
+            $extraIds = array_values(array_unique(array_map('intval', $data['extra_service_ids'] ?? [])));
+            $extraIds = array_values(array_filter($extraIds, fn (int $id) => $id !== (int) ($mainId ?? 0)));
+            $data['extra_service_ids'] = $extraIds === [] ? null : $extraIds;
+            $this->validateExtraServiceOwnership($request, $extraIds);
+        }
 
         $this->validateServiceOwnership($request, $data['service_id'] ?? $appointment->service_id);
 
@@ -146,6 +163,16 @@ class AppointmentController extends Controller
         }
         $exists = Service::query()->where('id', $serviceId)->where('user_id', $request->user()->id)->exists();
         abort_if(! $exists, 422, 'Invalid service');
+    }
+
+    /**
+     * @param  array<int>  $serviceIds
+     */
+    private function validateExtraServiceOwnership(Request $request, array $serviceIds): void
+    {
+        foreach ($serviceIds as $id) {
+            $this->validateServiceOwnership($request, $id);
+        }
     }
 
     private function authorizeOwner(Request $request, Appointment $appointment): void

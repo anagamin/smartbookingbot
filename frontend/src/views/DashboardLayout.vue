@@ -99,7 +99,6 @@ const nav = [
   { to: '/app/profile', label: 'Профиль', showUnreadBadge: false },
   { to: '/app/work', label: 'Работа', showUnreadBadge: false },
   { to: '/app/calendar', label: 'Календарь', showUnreadBadge: false },
-  { to: '/app/logs', label: 'Лог', showUnreadBadge: false },
   { to: '/app/billing', label: 'Оплата', showUnreadBadge: false },
   { to: '/app/notifications', label: 'Уведомления', showUnreadBadge: true },
 ]

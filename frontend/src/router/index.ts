@@ -29,7 +29,6 @@ const router = createRouter({
         { path: 'profile', name: 'profile', component: () => import('../views/tabs/ProfileTab.vue') },
         { path: 'work', name: 'work', component: () => import('../views/tabs/WorkTab.vue') },
         { path: 'calendar', name: 'calendar', component: () => import('../views/tabs/CalendarTab.vue') },
-        { path: 'logs', name: 'logs', component: () => import('../views/tabs/LogsTab.vue') },
         { path: 'billing', name: 'billing', component: () => import('../views/tabs/BillingTab.vue') },
         { path: 'notifications', name: 'notifications', component: () => import('../views/tabs/NotificationsTab.vue') },
       ],

@@ -33,6 +33,14 @@ class VkWebhookController extends Controller
         if ($type === 'confirmation') {
             $code = (string) ($account->meta['confirmation_code'] ?? '');
 
+            $meta = $account->meta ?? [];
+            if (($meta['confirmation_pending'] ?? false) === true && empty($meta['callback_confirmed_at'])) {
+                $meta['callback_confirmed_at'] = now()->toIso8601String();
+                $meta['confirmation_pending'] = false;
+                $account->meta = $meta;
+                $account->save();
+            }
+
             return response($code, Response::HTTP_OK, ['Content-Type' => 'text/plain']);
         }
 

@@ -90,7 +90,14 @@ class VkApiService
 
         $data = $response->json();
         if (isset($data['error'])) {
-            Log::info('vk_get_callback_servers_error', $data['error']);
+            $err = $data['error'];
+            // Community service tokens with messages/wall only cannot call groups.getCallbackServers.
+            $isScopeDenied = (int) ($err['error_code'] ?? 0) === 15;
+            if ($isScopeDenied) {
+                Log::debug('vk_get_callback_servers_scope_denied', $err);
+            } else {
+                Log::info('vk_get_callback_servers_error', $err);
+            }
 
             return 'not_found';
         }

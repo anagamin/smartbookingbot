@@ -41,6 +41,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/vk/group', [VkIntegrationController::class, 'showGroup']);
     Route::post('/vk/group', [VkIntegrationController::class, 'storeGroup']);
+    Route::delete('/vk/group', [VkIntegrationController::class, 'destroyGroup']);
 
     Route::apiResource('services', ServiceController::class)->except(['show']);
 

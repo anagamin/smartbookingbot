@@ -26,15 +26,21 @@ class VkIdOAuthService
         ]);
 
         $cfg = config('smartbooking.vk_id');
-        $query = http_build_query([
+        $params = [
             'response_type' => 'code',
             'client_id' => $cfg['client_id'],
             'redirect_uri' => $cfg['redirect_uri'],
-            'scope' => 'vkid.personal_info email',
             'state' => $state,
             'code_challenge' => $challenge,
             'code_challenge_method' => 'S256',
-        ]);
+        ];
+        $scopes = trim((string) ($cfg['oauth_scopes'] ?? ''));
+        if ($scopes !== '') {
+            $params['scope'] = $scopes;
+        }
+
+        // RFC3986: spaces in scope must be %20 (VK examples), not "+" from RFC1738.
+        $query = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
 
         $url = rtrim($cfg['authorize_url'], '?').'?'.$query;
 
@@ -51,6 +57,8 @@ class VkIdOAuthService
         $cfg = config('smartbooking.vk_id');
         $linkUserId = $row->user_id;
         $codeVerifier = $row->code_verifier;
+        $storedScopes = trim((string) ($cfg['oauth_scopes'] ?? ''));
+        $storedScopes = $storedScopes !== '' ? $storedScopes : 'vkid.personal_info';
 
         $response = Http::asForm()->timeout(30)->post($cfg['token_url'], [
             'grant_type' => 'authorization_code',
@@ -101,7 +109,7 @@ class VkIdOAuthService
                     'access_token' => $accessToken,
                     'refresh_token' => $response->json('refresh_token'),
                     'expires_at' => now()->addSeconds((int) ($response->json('expires_in') ?? 3600)),
-                    'scopes' => 'vkid.personal_info email',
+                    'scopes' => $storedScopes,
                 ]
             );
 
@@ -143,7 +151,7 @@ class VkIdOAuthService
             'access_token' => $accessToken,
             'refresh_token' => $response->json('refresh_token'),
             'expires_at' => now()->addSeconds((int) ($response->json('expires_in') ?? 3600)),
-            'scopes' => 'vkid.personal_info email',
+            'scopes' => $storedScopes,
         ]);
 
         return $user;

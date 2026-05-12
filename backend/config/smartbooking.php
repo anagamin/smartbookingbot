@@ -21,6 +21,9 @@ return [
         'authorize_url' => env('VK_ID_AUTHORIZE_URL', 'https://id.vk.ru/authorize'),
         'token_url' => env('VK_ID_TOKEN_URL', 'https://id.vk.ru/oauth2/auth'),
         'user_info_url' => env('VK_ID_USER_INFO_URL', 'https://id.vk.ru/oauth2/user_info'),
+        // Space-separated scopes for /authorize. Leave empty for default vkid.personal_info only.
+        // Enable "Почта" in VK ID app → Доступы before requesting "email". See VK ID create-application docs.
+        'oauth_scopes' => env('VK_ID_OAUTH_SCOPES', ''),
     ],
     'yandex' => [
         'client_id' => env('YANDEX_CLIENT_ID'),

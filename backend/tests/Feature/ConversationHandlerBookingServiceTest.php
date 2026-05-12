@@ -44,6 +44,21 @@ class ConversationHandlerBookingServiceTest extends DatabaseTestCase
         );
     }
 
+    private function makeAiAvailabilityRequest(string $date, array $services = []): AiIntentResult
+    {
+        return new AiIntentResult(
+            intent: 'availability_request',
+            confidence: 0.9,
+            service: $services[0] ?? null,
+            services: $services,
+            date: $date,
+            dateEnd: null,
+            time: null,
+            reply: '',
+            needsOwner: false,
+        );
+    }
+
     private function makeAiBookingCancel(?string $date = null, ?string $time = null, bool $needsOwner = false): AiIntentResult
     {
         return new AiIntentResult(
@@ -248,6 +263,89 @@ class ConversationHandlerBookingServiceTest extends DatabaseTestCase
         $this->assertTrue($appointment->ends_at->eq(Carbon::parse('2026-06-05 10:45:00')));
     }
 
+    public function test_availability_uses_last_explicit_service_message_not_old_combo(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-05-12 10:00:00'));
+
+        $user = User::factory()->create();
+        WorkingHour::query()->create([
+            'user_id' => $user->id,
+            'weekday' => 3,
+            'opens_at' => '10:00:00',
+            'closes_at' => '19:00:00',
+        ]);
+
+        Service::query()->create([
+            'user_id' => $user->id,
+            'title' => 'Маникюр',
+            'duration_minutes' => 60,
+            'price_kopecks' => 1000,
+            'is_active' => true,
+        ]);
+        Service::query()->create([
+            'user_id' => $user->id,
+            'title' => 'Педикюр',
+            'duration_minutes' => 120,
+            'price_kopecks' => 2000,
+            'is_active' => true,
+        ]);
+
+        $vkAcc = SocialAccount::query()->create([
+            'user_id' => $user->id,
+            'provider' => SocialAccount::PROVIDER_VK_GROUP,
+            'provider_user_id' => 'g1',
+            'access_token' => 'token',
+        ]);
+
+        $dialog = Dialog::query()->create([
+            'user_id' => $user->id,
+            'social_account_id' => $vkAcc->id,
+            'external_client_id' => '100',
+            'client_name' => 'Клиент',
+        ]);
+
+        $session = DialogSession::query()->create([
+            'dialog_id' => $dialog->id,
+            'status' => DialogSession::STATUS_OPEN,
+            'started_at' => now(),
+        ]);
+
+        Message::query()->create([
+            'dialog_id' => $dialog->id,
+            'dialog_session_id' => $session->id,
+            'direction' => Message::DIRECTION_INBOUND,
+            'text' => 'Запишите маникюр и педикюр на следующей неделе',
+        ]);
+        Message::query()->create([
+            'dialog_id' => $dialog->id,
+            'dialog_session_id' => $session->id,
+            'direction' => Message::DIRECTION_INBOUND,
+            'text' => 'Хочу только педикюр на завтра, подскажите окна',
+        ]);
+
+        $captured = '';
+        $gpt = Mockery::mock(GptunnelClient::class);
+        $gpt->shouldReceive('classifyMessage')->once()->andReturn($this->makeAiAvailabilityRequest('2026-05-13'));
+        $this->app->instance(GptunnelClient::class, $gpt);
+        $vk = Mockery::mock(VkApiService::class);
+        $vk->shouldReceive('sendGroupMessage')->once()->with(
+            Mockery::type('string'),
+            Mockery::type('int'),
+            Mockery::on(function (string $msg) use (&$captured) {
+                $captured = $msg;
+
+                return true;
+            }),
+        );
+        $this->app->instance(VkApiService::class, $vk);
+
+        $handler = $this->app->make(ConversationHandler::class);
+        $handler->handleInbound($user, $vkAcc, $dialog, $session, 'А какие свободные слоты на завтра?', 1);
+
+        $this->assertStringContainsString('17:00', $captured, 'Последний старт при педикюре 2 ч до закрытия 19:00 — 17:00');
+        $this->assertStringContainsString('10:00', $captured);
+    }
+
     public function test_booking_combo_from_dialog_sums_duration_and_stores_extra_services(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-06-01 12:00:00'));
@@ -359,6 +457,75 @@ class ConversationHandlerBookingServiceTest extends DatabaseTestCase
 
         $appointment->refresh();
         $this->assertSame(Appointment::STATUS_CANCELLED, $appointment->status);
+    }
+
+    public function test_cancel_rewrites_messages_to_appointment_dialog_session(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-05-12 10:00:00'));
+
+        $user = User::factory()->create();
+        $this->seedOwnerWithSchedule($user);
+
+        $service = Service::query()->create([
+            'user_id' => $user->id,
+            'title' => 'Маникюр',
+            'duration_minutes' => 60,
+            'price_kopecks' => 1000,
+            'is_active' => true,
+        ]);
+
+        $vk = SocialAccount::query()->create([
+            'user_id' => $user->id,
+            'provider' => SocialAccount::PROVIDER_VK_GROUP,
+            'provider_user_id' => 'g1',
+            'access_token' => 'token',
+        ]);
+
+        $dialog = Dialog::query()->create([
+            'user_id' => $user->id,
+            'social_account_id' => $vk->id,
+            'external_client_id' => '100',
+            'client_name' => 'Клиент',
+        ]);
+
+        $bookingSession = DialogSession::query()->create([
+            'dialog_id' => $dialog->id,
+            'status' => DialogSession::STATUS_CLOSED,
+            'started_at' => now()->subDay(),
+            'closed_at' => now()->subHours(2),
+            'intent' => 'booking',
+        ]);
+
+        $appointment = Appointment::query()->create([
+            'user_id' => $user->id,
+            'service_id' => $service->id,
+            'dialog_session_id' => $bookingSession->id,
+            'client_name' => 'Клиент',
+            'starts_at' => Carbon::parse('2026-05-20 14:00:00'),
+            'ends_at' => Carbon::parse('2026-05-20 15:00:00'),
+            'status' => Appointment::STATUS_CONFIRMED,
+        ]);
+
+        $ephemeralSession = DialogSession::query()->create([
+            'dialog_id' => $dialog->id,
+            'status' => DialogSession::STATUS_OPEN,
+            'started_at' => now(),
+        ]);
+
+        $handler = $this->bindMocks($this->makeAiBookingCancel(needsOwner: true));
+        $handler->handleInbound($user, $vk, $dialog, $ephemeralSession, 'отмените мою запись', 1);
+
+        $appointment->refresh();
+        $this->assertSame(Appointment::STATUS_CANCELLED, $appointment->status);
+
+        $this->assertNull(DialogSession::query()->find($ephemeralSession->id));
+
+        $messages = Message::query()->where('dialog_session_id', $bookingSession->id)->orderBy('id')->get();
+        $this->assertCount(2, $messages);
+        $this->assertSame(Message::DIRECTION_INBOUND, $messages[0]->direction);
+        $this->assertSame('отмените мою запись', $messages[0]->text);
+        $this->assertSame(Message::DIRECTION_OUTBOUND, $messages[1]->direction);
+        $this->assertStringContainsString('отменена', mb_strtolower($messages[1]->text));
     }
 
     public function test_cancel_ambiguous_when_multiple_future_appointments_for_dialog(): void

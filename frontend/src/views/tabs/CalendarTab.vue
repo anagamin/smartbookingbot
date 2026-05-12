@@ -7,7 +7,7 @@ import interactionPlugin from '@fullcalendar/interaction'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import FullCalendar from '@fullcalendar/vue3'
 import Multiselect from '@vueform/multiselect'
-import { onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 /**
  * Must match `timeZone` in calendarOptions — API stores datetimes in app timezone (Europe/Moscow).
@@ -16,8 +16,21 @@ import { onMounted, ref } from 'vue'
  * (that would treat the coerced clock as a real UTC instant and shift by offset — e.g. 12:00 → 15:00 MSK).
  */
 const CALENDAR_TIMEZONE = 'Europe/Moscow'
+/** Пока календарь открыт — периодически подтягиваем записи (отмена/создание через бота и т.д.). */
+const CALENDAR_BACKGROUND_REFETCH_MS = 12_000
 
 const calendarRef = ref<InstanceType<typeof FullCalendar> | null>(null)
+let calendarPollTimer: ReturnType<typeof setInterval> | null = null
+
+function refetchCalendarEvents() {
+  calendarRef.value?.getApi().refetchEvents()
+}
+
+function onDocumentVisibilityChange() {
+  if (document.visibilityState === 'visible') {
+    refetchCalendarEvents()
+  }
+}
 const services = ref<Array<{ id: number; title: string; duration_minutes: number }>>([])
 
 const modal = ref<'create' | 'edit' | null>(null)
@@ -206,7 +219,7 @@ async function saveAppointment() {
     await http.patch(`/appointments/${editId.value}`, payload)
   }
   modal.value = null
-  calendarRef.value?.getApi().refetchEvents()
+  refetchCalendarEvents()
 }
 
 function closeModal() {
@@ -232,7 +245,21 @@ const calendarOptions: CalendarOptions = {
   eventClick: onEventClick,
 }
 
-onMounted(loadServices)
+onMounted(() => {
+  void loadServices()
+  calendarPollTimer = setInterval(() => {
+    refetchCalendarEvents()
+  }, CALENDAR_BACKGROUND_REFETCH_MS)
+  document.addEventListener('visibilitychange', onDocumentVisibilityChange)
+})
+
+onBeforeUnmount(() => {
+  if (calendarPollTimer !== null) {
+    clearInterval(calendarPollTimer)
+    calendarPollTimer = null
+  }
+  document.removeEventListener('visibilitychange', onDocumentVisibilityChange)
+})
 </script>
 
 <template>

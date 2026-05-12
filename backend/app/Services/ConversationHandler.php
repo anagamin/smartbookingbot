@@ -18,6 +18,8 @@ use Throwable;
 
 class ConversationHandler
 {
+    private ?int $outboundDialogSessionId = null;
+
     public function __construct(
         private readonly GptunnelClient $gptunnel,
         private readonly SlotAvailabilityService $slots,
@@ -33,6 +35,8 @@ class ConversationHandler
         string $inboundText,
         int $peerId,
     ): void {
+        $this->outboundDialogSessionId = null;
+
         if (! $owner->canRunBot()) {
             $this->activityLogger->log($owner, 'bot_skipped', 'Бот на паузе или недостаточно средств.', [
                 'dialog_id' => $dialog->id,
@@ -41,7 +45,7 @@ class ConversationHandler
             return;
         }
 
-        Message::query()->create([
+        $inboundMessage = Message::query()->create([
             'dialog_id' => $dialog->id,
             'dialog_session_id' => $session->id,
             'direction' => Message::DIRECTION_INBOUND,
@@ -67,12 +71,13 @@ class ConversationHandler
             'confidence' => $ai->confidence,
         ]);
 
-        $reply = $this->executeIntent($owner, $vkGroupAccount, $dialog, $session, $peerId, $ai, $inboundText);
+        $reply = $this->executeIntent($owner, $vkGroupAccount, $dialog, $session, $peerId, $ai, $inboundText, $inboundMessage);
         if ($reply !== null && $reply !== '') {
             $this->vk->sendGroupMessage($vkGroupAccount->access_token, $peerId, $reply);
+            $outSessionId = $this->outboundDialogSessionId ?? $session->id;
             Message::query()->create([
                 'dialog_id' => $dialog->id,
-                'dialog_session_id' => $session->id,
+                'dialog_session_id' => $outSessionId,
                 'direction' => Message::DIRECTION_OUTBOUND,
                 'text' => $reply,
             ]);
@@ -87,12 +92,13 @@ class ConversationHandler
         int $peerId,
         AiIntentResult $ai,
         string $inboundText,
+        Message $inboundMessage,
     ): ?string {
         return match ($ai->intent) {
             'informational' => $this->handleInformational($owner, $ai),
             'availability_request' => $this->handleAvailability($owner, $session, $ai),
             'booking_confirm' => $this->handleBookingConfirm($owner, $dialog, $session, $ai),
-            'booking_cancel' => $this->handleBookingCancel($owner, $dialog, $session, $ai),
+            'booking_cancel' => $this->handleBookingCancel($owner, $dialog, $session, $ai, $inboundMessage),
             'chit_chat' => $ai->reply !== '' ? $ai->reply : 'Пожалуйста! Если понадобится запись — напишите.',
             default => $this->handleOther($owner, $ai, $inboundText),
         };
@@ -243,6 +249,7 @@ class ConversationHandler
         Dialog $dialog,
         DialogSession $session,
         AiIntentResult $ai,
+        Message $inboundMessage,
     ): string {
         $candidates = $this->collectCancelCandidates($owner, $dialog, $session);
         $countBeforeAi = $candidates->count();
@@ -267,7 +274,23 @@ class ConversationHandler
 
         $appointment = $candidates->first();
         $appointment->update(['status' => Appointment::STATUS_CANCELLED]);
-        $session->update(['status' => DialogSession::STATUS_CLOSED, 'closed_at' => now(), 'intent' => 'cancel']);
+
+        $historySessionId = $appointment->dialog_session_id;
+        if ($historySessionId !== null && (int) $historySessionId !== (int) $session->id) {
+            $inboundMessage->update(['dialog_session_id' => $historySessionId]);
+            $this->outboundDialogSessionId = (int) $historySessionId;
+            DialogSession::query()->whereKey($historySessionId)->update([
+                'status' => DialogSession::STATUS_CLOSED,
+                'closed_at' => now(),
+                'intent' => 'cancel',
+            ]);
+            if (! $session->messages()->exists()) {
+                $session->delete();
+            }
+        } else {
+            $session->update(['status' => DialogSession::STATUS_CLOSED, 'closed_at' => now(), 'intent' => 'cancel']);
+        }
+
         $this->activityLogger->log($owner, 'appointment_cancelled', 'Отмена #'.$appointment->id, [
             'appointment_id' => $appointment->id,
         ]);
@@ -377,6 +400,11 @@ class ConversationHandler
             return $resolved;
         }
 
+        $fromRecent = $this->resolveServicesFromRecentMessages($owner, $session);
+        if ($fromRecent->isNotEmpty()) {
+            return $fromRecent;
+        }
+
         $corpus = Message::query()
             ->where('dialog_session_id', $session->id)
             ->orderBy('id')
@@ -389,6 +417,34 @@ class ConversationHandler
         }
 
         return $this->slots->findServicesInDialogText($owner, $corpus);
+    }
+
+    /**
+     * Берём услуги из последнего сообщения, где они явно упомянуты (с конца сессии), чтобы запрос
+     * «слоты на завтра» не тянул сумму длительностей из старого «маникюр и педикюр» в начале чата.
+     *
+     * @return Collection<int, Service>
+     */
+    private function resolveServicesFromRecentMessages(User $owner, DialogSession $session): Collection
+    {
+        $messages = Message::query()
+            ->where('dialog_session_id', $session->id)
+            ->orderByDesc('id')
+            ->limit(40)
+            ->get(['text']);
+
+        foreach ($messages as $m) {
+            $t = trim((string) $m->text);
+            if ($t === '') {
+                continue;
+            }
+            $found = $this->slots->findServicesInDialogText($owner, $t);
+            if ($found->isNotEmpty()) {
+                return $found;
+            }
+        }
+
+        return collect();
     }
 
     /**
@@ -453,7 +509,7 @@ class ConversationHandler
 
 Правила:
 - informational: вопрос о цене, услуге, адресе из контекста
-- availability_request: когда можно, свободные слоты; если визит из нескольких услуг — заполни services всеми (длительность для слотов = сумма duration_minutes). Если клиент спрашивает про конкретную дату/время («завтра в 16:00», «5 мая в 10:30») — обязательно заполни поля date (Y-m-d) и time (H:i), вычислив дату от reference.server_today (завтра = server_today + 1 день). Если указан только день или период без времени («5 мая», «в выходные», «на следующей неделе») — time=null; для одного дня date_end=null; для диапазона заполни date (первый день) и date_end (последний). «Выходные» — ближайшая суббота–воскресенье от server_today (если сегодня суббота/воскресенье — текущие выходные). «На следующей неделе» — календарная неделя после той, в которой server_today (пн–вс этой «следующей» недели).
+- availability_request: когда можно, свободные слоты; если визит из нескольких услуг — заполни services всеми (длительность для слотов = сумма duration_minutes). Если клиент спрашивает слоты без перечисления услуг («на завтра есть места?») и в последних репликах нет явного списка услуг — оставь services пустым (длительность возьмётся из последнего сообщения, где услуга названа явно). Если клиент спрашивает про конкретную дату/время («завтра в 16:00», «5 мая в 10:30») — обязательно заполни поля date (Y-m-d) и time (H:i), вычислив дату от reference.server_today (завтра = server_today + 1 день). Если указан только день или период без времени («5 мая», «в выходные», «на следующей неделе») — time=null; для одного дня date_end=null; для диапазона заполни date (первый день) и date_end (последний). «Выходные» — ближайшая суббота–воскресенье от server_today (если сегодня суббота/воскресенье — текущие выходные). «На следующей неделе» — календарная неделя после той, в которой server_today (пн–вс этой «следующей» недели).
 - booking_confirm: явное согласие на конкретные дату и время; заполни services списком услуг визита (одна или несколько), каждая должна узнаваться по массиву services из контекста. Если несколько услуг — суммарная длительность = сумма duration_minutes. Если нельзя сопоставить ни одну — services: [] и service: null.
 - booking_cancel: отмена записи
 - chit_chat: спасибо, ок, до связи

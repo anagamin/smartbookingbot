@@ -175,31 +175,85 @@ const expiryWarningText = computed(() => {
 const showPausedWithSubBanner = computed(
   () => user.value?.subscription_active && user.value.bot_paused && !showExpiredBanner.value,
 )
+
+const mobileNavOpen = ref(false)
+
+function toggleMobileNav() {
+  mobileNavOpen.value = !mobileNavOpen.value
+}
+
+function closeMobileNav() {
+  mobileNavOpen.value = false
+}
+
+watch(
+  () => route.path,
+  () => {
+    closeMobileNav()
+  },
+)
 </script>
 
 <template>
   <div class="min-h-screen bg-slate-950">
     <header class="border-b border-white/10 bg-slate-900/50">
-      <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4">
-        <RouterLink to="/app" class="font-semibold text-white">SmartBookingBot</RouterLink>
-        <nav class="flex flex-wrap items-center gap-2">
-          <RouterLink
-            v-for="item in nav"
-            :key="item.to"
-            :to="item.to"
-            class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-slate-300 hover:bg-white/5 hover:text-white"
-            active-class="bg-white/10 text-white"
-          >
-            {{ item.label }}
-            <span
-              v-if="item.showUnreadBadge && unreadCount > 0"
-              class="min-w-[1.25rem] rounded-full bg-rose-500 px-1.5 py-0.5 text-center text-[10px] font-semibold leading-none text-white"
-            >
-              {{ unreadCount > 99 ? '99+' : unreadCount }}
-            </span>
+      <div class="mx-auto max-w-6xl px-4 py-4">
+        <div class="flex items-center justify-between gap-3">
+          <RouterLink to="/app" class="font-semibold text-white" @click="closeMobileNav">
+            SmartBookingBot
           </RouterLink>
-        </nav>
-        <div class="flex flex-wrap items-center justify-end gap-3 text-sm">
+
+          <button
+            type="button"
+            class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/15 text-slate-200 hover:bg-white/5 md:hidden"
+            :aria-expanded="mobileNavOpen"
+            aria-controls="cabinet-mobile-nav"
+            aria-label="Меню"
+            @click="toggleMobileNav"
+          >
+            <svg
+              v-if="!mobileNavOpen"
+              class="h-5 w-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              aria-hidden="true"
+            >
+              <path stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+            <svg
+              v-else
+              class="h-5 w-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              aria-hidden="true"
+            >
+              <path stroke-linecap="round" d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+
+          <nav class="hidden items-center gap-2 md:flex">
+            <RouterLink
+              v-for="item in nav"
+              :key="item.to"
+              :to="item.to"
+              class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-slate-300 hover:bg-white/5 hover:text-white"
+              active-class="bg-white/10 text-white"
+            >
+              {{ item.label }}
+              <span
+                v-if="item.showUnreadBadge && unreadCount > 0"
+                class="min-w-[1.25rem] rounded-full bg-rose-500 px-1.5 py-0.5 text-center text-[10px] font-semibold leading-none text-white"
+              >
+                {{ unreadCount > 99 ? '99+' : unreadCount }}
+              </span>
+            </RouterLink>
+          </nav>
+
+          <div class="hidden items-center justify-end gap-3 text-sm md:flex">
           <RouterLink
             v-if="user"
             to="/app/billing"
@@ -212,13 +266,59 @@ const showPausedWithSubBanner = computed(
             <div class="truncate text-sm font-semibold leading-tight">{{ subscriptionEndLabel }}</div>
             <div class="truncate text-[11px] leading-tight opacity-90">{{ subscriptionChipHint }}</div>
           </RouterLink>
-          <button
-            type="button"
-            class="rounded-lg border border-white/15 px-3 py-1.5 text-slate-300 hover:bg-white/5"
-            @click="logout"
-          >
-            Выйти
-          </button>
+            <button
+              type="button"
+              class="rounded-lg border border-white/15 px-3 py-1.5 text-slate-300 hover:bg-white/5"
+              @click="logout"
+            >
+              Выйти
+            </button>
+          </div>
+        </div>
+
+        <div
+          v-show="mobileNavOpen"
+          id="cabinet-mobile-nav"
+          class="mt-4 border-t border-white/10 pt-4 md:hidden"
+        >
+          <nav class="flex flex-col gap-1">
+            <RouterLink
+              v-for="item in nav"
+              :key="item.to"
+              :to="item.to"
+              class="inline-flex items-center justify-between rounded-lg px-3 py-2.5 text-sm text-slate-300 hover:bg-white/5 hover:text-white"
+              active-class="bg-white/10 text-white"
+              @click="closeMobileNav"
+            >
+              <span>{{ item.label }}</span>
+              <span
+                v-if="item.showUnreadBadge && unreadCount > 0"
+                class="min-w-[1.25rem] rounded-full bg-rose-500 px-1.5 py-0.5 text-center text-[10px] font-semibold leading-none text-white"
+              >
+                {{ unreadCount > 99 ? '99+' : unreadCount }}
+              </span>
+            </RouterLink>
+          </nav>
+          <div class="mt-4 flex flex-col gap-3 border-t border-white/10 pt-4 text-sm">
+            <RouterLink
+              v-if="user"
+              to="/app/billing"
+              class="group rounded-xl px-3 py-2 ring-1 transition hover:brightness-110"
+              :class="subscriptionChipClass"
+              @click="closeMobileNav"
+            >
+              <div class="text-[10px] font-medium uppercase tracking-wide text-white/50">Сервис до</div>
+              <div class="text-sm font-semibold leading-tight">{{ subscriptionEndLabel }}</div>
+              <div class="text-[11px] leading-tight opacity-90">{{ subscriptionChipHint }}</div>
+            </RouterLink>
+            <button
+              type="button"
+              class="w-full rounded-lg border border-white/15 px-3 py-2 text-slate-300 hover:bg-white/5"
+              @click="logout"
+            >
+              Выйти
+            </button>
+          </div>
         </div>
       </div>
     </header>

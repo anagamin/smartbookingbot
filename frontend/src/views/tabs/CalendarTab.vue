@@ -7,7 +7,7 @@ import interactionPlugin from '@fullcalendar/interaction'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import FullCalendar from '@fullcalendar/vue3'
 import Multiselect from '@vueform/multiselect'
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 
 /**
  * Must match `timeZone` in calendarOptions — API stores datetimes in app timezone (Europe/Moscow).
@@ -16,6 +16,14 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
  * (that would treat the coerced clock as a real UTC instant and shift by offset — e.g. 12:00 → 15:00 MSK).
  */
 const CALENDAR_TIMEZONE = 'Europe/Moscow'
+const CALENDAR_MOBILE_MAX_WIDTH = 768
+
+const isMobileCalendar = ref(
+  typeof window !== 'undefined'
+    ? window.matchMedia(`(max-width: ${CALENDAR_MOBILE_MAX_WIDTH}px)`).matches
+    : false,
+)
+let calendarViewportMq: MediaQueryList | null = null
 /** Пока календарь открыт — периодически подтягиваем записи (отмена/создание через бота и т.д.). */
 const CALENDAR_BACKGROUND_REFETCH_MS = 12_000
 
@@ -226,13 +234,40 @@ function closeModal() {
   modal.value = null
 }
 
-const calendarOptions: CalendarOptions = {
+const compactCalendarViews = new Set(['timeGridDay', 'timeGridWeek', 'dayGridMonth'])
+
+function syncCalendarViewForViewport() {
+  const mobile = window.matchMedia(`(max-width: ${CALENDAR_MOBILE_MAX_WIDTH}px)`).matches
+  isMobileCalendar.value = mobile
+  const api = calendarRef.value?.getApi()
+  if (!api) return
+  const current = api.view.type
+  if (!compactCalendarViews.has(current)) return
+  const target = mobile ? 'timeGridDay' : 'timeGridWeek'
+  if (current !== target) {
+    api.changeView(target)
+  }
+}
+
+const calendarOptions = computed<CalendarOptions>(() => ({
   plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
-  initialView: 'timeGridWeek',
-  headerToolbar: {
-    left: 'prev,next today',
-    center: 'title',
-    right: 'dayGridMonth,timeGridWeek',
+  initialView: isMobileCalendar.value ? 'timeGridDay' : 'timeGridWeek',
+  headerToolbar: isMobileCalendar.value
+    ? {
+        left: 'prev,next',
+        center: 'title',
+        right: 'today,dayGridMonth,timeGridDay',
+      }
+    : {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,timeGridDay',
+      },
+  buttonText: {
+    today: 'Сегодня',
+    month: 'Месяц',
+    week: 'Неделя',
+    day: 'День',
   },
   locales: [ruLocale],
   locale: 'ru',
@@ -240,10 +275,15 @@ const calendarOptions: CalendarOptions = {
   height: 'auto',
   slotMinTime: '08:00:00',
   slotMaxTime: '22:00:00',
+  allDaySlot: false,
+  nowIndicator: true,
   events: fetchEvents,
   dateClick: onDateClick,
   eventClick: onEventClick,
-}
+  windowResize: () => {
+    syncCalendarViewForViewport()
+  },
+}))
 
 onMounted(() => {
   void loadServices()
@@ -251,6 +291,9 @@ onMounted(() => {
     refetchCalendarEvents()
   }, CALENDAR_BACKGROUND_REFETCH_MS)
   document.addEventListener('visibilitychange', onDocumentVisibilityChange)
+  calendarViewportMq = window.matchMedia(`(max-width: ${CALENDAR_MOBILE_MAX_WIDTH}px)`)
+  calendarViewportMq.addEventListener('change', syncCalendarViewForViewport)
+  void nextTick(() => syncCalendarViewForViewport())
 })
 
 onBeforeUnmount(() => {
@@ -259,13 +302,15 @@ onBeforeUnmount(() => {
     calendarPollTimer = null
   }
   document.removeEventListener('visibilitychange', onDocumentVisibilityChange)
+  calendarViewportMq?.removeEventListener('change', syncCalendarViewForViewport)
+  calendarViewportMq = null
 })
 </script>
 
 <template>
   <div>
     <h2 class="mb-4 text-xl font-semibold text-white">Календарь</h2>
-    <div class="rounded-xl border border-white/10 bg-white p-2 text-slate-900">
+    <div class="sb-calendar-root rounded-xl border border-white/10 bg-white p-1 text-slate-900 sm:p-2">
       <FullCalendar ref="calendarRef" :options="calendarOptions" />
     </div>
 
@@ -404,5 +449,53 @@ onBeforeUnmount(() => {
 }
 :deep(.sb-event-cancelled .fc-event-title) {
   font-style: italic;
+}
+
+.sb-calendar-root :deep(.fc-toolbar-title) {
+  font-size: 1.125rem;
+  line-height: 1.3;
+}
+
+@media (max-width: 768px) {
+  .sb-calendar-root :deep(.fc-toolbar) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem !important;
+  }
+
+  .sb-calendar-root :deep(.fc-toolbar-chunk) {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.25rem;
+    width: 100%;
+  }
+
+  .sb-calendar-root :deep(.fc-toolbar-title) {
+    font-size: 0.95rem !important;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .sb-calendar-root :deep(.fc-button) {
+    padding: 0.3rem 0.55rem;
+    font-size: 0.75rem;
+  }
+
+  .sb-calendar-root :deep(.fc-timegrid-slot-label-cushion),
+  .sb-calendar-root :deep(.fc-col-header-cell-cushion) {
+    font-size: 0.7rem;
+  }
+
+  .sb-calendar-root :deep(.fc-event-title),
+  .sb-calendar-root :deep(.fc-event-time) {
+    font-size: 0.7rem;
+    line-height: 1.2;
+  }
+
+  .sb-calendar-root :deep(.fc-timegrid-event) {
+    padding: 1px 2px;
+  }
 }
 </style>

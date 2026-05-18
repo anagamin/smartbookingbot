@@ -120,15 +120,17 @@ class ConversationHandler
     private function handleAvailability(User $owner, DialogSession $session, AiIntentResult $ai): string
     {
         $masterContext = $this->resolveMasterFromContext($owner, $session, $ai);
+        $masterFilter = $masterContext instanceof Master ? $masterContext : null;
 
-        $resolved = $this->resolveServicesFromContext($owner, $session, $ai, $masterContext);
+        $resolved = $this->resolveServicesFromContext($owner, $session, $ai, $masterFilter);
+        $resolved = $this->slots->expandServicesWithSameTitle($owner, $resolved);
         $mastersForServices = $this->slots->resolveMastersForAvailability($owner, $resolved);
 
-        if ($owner->isSalon() && $mastersForServices->count() > 1 && $masterContext === null) {
-            return $this->buildAskMasterMessage($owner, $resolved);
+        $master = $masterFilter;
+        if ($master === null && $mastersForServices->count() === 1) {
+            $master = $mastersForServices->first();
         }
 
-        $master = $masterContext ?? $mastersForServices->first();
         $duration = $resolved->isEmpty()
             ? 60
             : max(1, $resolved->sum(fn (Service $s) => (int) $s->duration_minutes));
@@ -161,6 +163,8 @@ class ConversationHandler
             $rangeEnd = $date;
         }
 
+        $requestedDayOnly = $date !== null && $time === null && ($rangeEnd === null || $rangeEnd === $date);
+
         if ($date !== null) {
             $suggestions = $this->slots->suggestSlotsInDateRange(
                 $owner,
@@ -171,14 +175,32 @@ class ConversationHandler
                 $durationOverride,
                 $master,
             );
+
+            if ($suggestions === [] && $requestedDayOnly) {
+                $alternatives = $this->suggestAvailabilityAlternatives(
+                    $owner,
+                    $resolved,
+                    $mastersForServices,
+                    $durationOverride,
+                    $master,
+                );
+                if ($alternatives === []) {
+                    return 'На '.Carbon::parse($date)->locale('ru')->translatedFormat('j F').' свободных окон нет. В ближайшие дни тоже не нашла свободного времени — напишите другой день или мастер уточнит вручную.';
+                }
+
+                return 'На '.Carbon::parse($date)->locale('ru')->translatedFormat('j F').' свободных окон нет. '
+                    .$this->formatAvailabilitySuggestions($alternatives);
+            }
         } elseif ($resolved->isNotEmpty() && $mastersForServices->count() > 1 && $master === null) {
             $suggestions = $this->slots->suggestSlotsForServices($owner, $resolved, 14, 48);
         } else {
-            $suggestions = $this->slots->suggestSlots($owner, $singleService, 14, 24, $durationOverride, $master);
-        }
-
-        if ($suggestions === [] && $date !== null && $time === null) {
-            $suggestions = $this->slots->suggestSlots($owner, $singleService, 14, 24, $durationOverride, $master);
+            $suggestions = $this->suggestAvailabilityAlternatives(
+                $owner,
+                $resolved,
+                $mastersForServices,
+                $durationOverride,
+                $master,
+            );
         }
 
         if ($suggestions === []) {
@@ -186,6 +208,27 @@ class ConversationHandler
         }
 
         return $this->formatAvailabilitySuggestions($suggestions);
+    }
+
+    /**
+     * @param  Collection<int, Service>  $resolved
+     * @param  Collection<int, Master>  $mastersForServices
+     * @return list<array{start: Carbon, end: Carbon, master_id?: int, master_name?: string}>
+     */
+    private function suggestAvailabilityAlternatives(
+        User $owner,
+        Collection $resolved,
+        Collection $mastersForServices,
+        ?int $durationOverride,
+        ?Master $master,
+    ): array {
+        $singleService = $resolved->count() === 1 ? $resolved->first() : null;
+
+        if ($resolved->isNotEmpty() && $master === null && $mastersForServices->count() > 1) {
+            return $this->slots->suggestSlotsForServices($owner, $resolved, 14, 48);
+        }
+
+        return $this->slots->suggestSlots($owner, $singleService, 14, 48, $durationOverride, $master);
     }
 
     /**
@@ -495,8 +538,7 @@ class ConversationHandler
 
         $resolved = collect();
         foreach ($ai->services as $title) {
-            $s = $this->slots->findServiceByTitle($owner, $title, $master);
-            if ($s !== null) {
+            foreach ($this->slots->findServicesByTitle($owner, $title, $master) as $s) {
                 $resolved->push($s);
             }
         }

@@ -237,8 +237,40 @@ class SlotAvailabilityService
      * @param  Collection<int, Service>  $services
      * @return Collection<int, Master>
      */
+    /**
+     * Если у нескольких мастеров одна и та же услуга (одинаковое название), учитываем всех при подборе слотов.
+     *
+     * @param  Collection<int, Service>  $services
+     * @return Collection<int, Service>
+     */
+    public function expandServicesWithSameTitle(User $user, Collection $services): Collection
+    {
+        if ($services->isEmpty()) {
+            return $services;
+        }
+
+        $titles = $services
+            ->map(fn (Service $s) => mb_strtolower(trim($s->title)))
+            ->filter(fn (string $t) => $t !== '')
+            ->unique()
+            ->values();
+
+        if ($titles->isEmpty()) {
+            return $services;
+        }
+
+        return Service::query()
+            ->where('user_id', $user->id)
+            ->where('is_active', true)
+            ->get()
+            ->filter(fn (Service $s) => $titles->contains(mb_strtolower(trim($s->title))))
+            ->unique('id')
+            ->values();
+    }
+
     public function resolveMastersForAvailability(User $user, Collection $services): Collection
     {
+        $services = $this->expandServicesWithSameTitle($user, $services);
         $masters = $this->resolveMastersForServices($user, $services);
         $withSchedule = $masters->filter(fn (Master $m) => $this->masterHasWorkingHours($user, $m))->values();
 
@@ -418,11 +450,14 @@ class SlotAvailabilityService
             ->get();
     }
 
-    public function findServiceByTitle(User $user, string $title, ?Master $master = null): ?Service
+    /**
+     * @return Collection<int, Service>
+     */
+    public function findServicesByTitle(User $user, string $title, ?Master $master = null): Collection
     {
         $needle = mb_strtolower(trim($title));
         if ($needle === '') {
-            return null;
+            return collect();
         }
 
         $q = Service::query()
@@ -433,8 +468,8 @@ class SlotAvailabilityService
         }
         $candidates = $q->get();
 
-        $exact = $candidates->first(fn (Service $s) => mb_strtolower($s->title) === $needle);
-        if ($exact !== null) {
+        $exact = $candidates->filter(fn (Service $s) => mb_strtolower($s->title) === $needle)->values();
+        if ($exact->isNotEmpty()) {
             return $exact;
         }
 
@@ -444,7 +479,12 @@ class SlotAvailabilityService
             return str_contains($t, $needle) || str_contains($needle, $t);
         });
 
-        return $partial->sortByDesc(fn (Service $s) => mb_strlen($s->title))->first();
+        return $partial->sortByDesc(fn (Service $s) => mb_strlen($s->title))->values();
+    }
+
+    public function findServiceByTitle(User $user, string $title, ?Master $master = null): ?Service
+    {
+        return $this->findServicesByTitle($user, $title, $master)->first();
     }
 
     /**

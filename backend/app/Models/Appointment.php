@@ -13,6 +13,7 @@ class Appointment extends Model
 
     protected $fillable = [
         'user_id',
+        'master_id',
         'service_id',
         'extra_service_ids',
         'dialog_session_id',
@@ -36,6 +37,11 @@ class Appointment extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function master(): BelongsTo
+    {
+        return $this->belongsTo(Master::class);
     }
 
     public function service(): BelongsTo

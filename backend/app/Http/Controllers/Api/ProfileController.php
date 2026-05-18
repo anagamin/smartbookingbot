@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Master;
 use App\Support\BookingSlug;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
@@ -15,6 +17,7 @@ class ProfileController extends Controller
 
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
+            'business_mode' => ['sometimes', 'string', Rule::in(['solo', 'salon'])],
             'sex' => ['nullable', 'string', Rule::in(['male', 'female', 'other'])],
             'services_description' => ['nullable', 'string', 'max:20000'],
             'bot_paused' => ['sometimes', 'boolean'],
@@ -42,7 +45,36 @@ class ProfileController extends Controller
             ], 422);
         }
 
-        $user->update($data);
+        if (array_key_exists('business_mode', $data)) {
+            $newMode = $data['business_mode'];
+            if ($newMode === 'solo' && $user->masters()->count() > 1) {
+                return response()->json([
+                    'message' => 'Перед переключением на «частный мастер» оставьте в списке только одного мастера.',
+                ], 422);
+            }
+        }
+
+        DB::transaction(function () use ($user, $data): void {
+            if (array_key_exists('name', $data) && ($user->business_mode ?? 'solo') !== 'salon') {
+                $primary = $user->masters()->orderBy('sort_order')->orderBy('id')->first();
+                if ($primary !== null) {
+                    $primary->update(['name' => $data['name']]);
+                }
+            }
+
+            $user->update($data);
+
+            if (array_key_exists('business_mode', $data) && $data['business_mode'] === 'salon') {
+                if ($user->masters()->count() === 0) {
+                    Master::query()->create([
+                        'user_id' => $user->id,
+                        'name' => $user->name,
+                        'sort_order' => 0,
+                    ]);
+                }
+            }
+        });
+
         $user->refresh();
 
         return response()->json([

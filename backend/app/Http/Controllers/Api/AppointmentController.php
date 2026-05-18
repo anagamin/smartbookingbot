@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
+use App\Models\Master;
 use App\Models\Service;
 use App\Services\SlotAvailabilityService;
 use Carbon\Carbon;
@@ -17,18 +18,23 @@ class AppointmentController extends Controller
         $request->validate([
             'from' => ['required', 'date'],
             'to' => ['required', 'date', 'after_or_equal:from'],
+            'master_id' => ['nullable', 'integer'],
         ]);
 
         $from = Carbon::parse($request->query('from'))->startOfDay();
         $to = Carbon::parse($request->query('to'))->endOfDay();
 
-        $items = Appointment::query()
+        $q = Appointment::query()
             ->where('user_id', $request->user()->id)
             ->where('ends_at', '>=', $from)
-            ->where('starts_at', '<=', $to)
-            ->with('service')
-            ->orderBy('starts_at')
-            ->get();
+            ->where('starts_at', '<=', $to);
+
+        if ($request->filled('master_id')) {
+            $this->authorizeMaster($request, (int) $request->query('master_id'));
+            $q->where('master_id', (int) $request->query('master_id'));
+        }
+
+        $items = $q->with(['service', 'master'])->orderBy('starts_at')->get();
 
         $extraIds = $items
             ->flatMap(fn (Appointment $a) => collect($a->extra_service_ids ?? []))
@@ -44,7 +50,9 @@ class AppointmentController extends Controller
                 ->get()
                 ->keyBy('id');
 
-        return $items->map(fn (Appointment $a) => $this->toCalendarEvent($a, $extraServiceById));
+        $mastersById = $request->user()->masters()->get()->keyBy('id');
+
+        return $items->map(fn (Appointment $a) => $this->toCalendarEvent($a, $extraServiceById, $mastersById));
     }
 
     public function store(Request $request)
@@ -56,6 +64,7 @@ class AppointmentController extends Controller
 
         $data = $request->validate([
             'client_name' => ['required', 'string', 'max:255'],
+            'master_id' => ['nullable', 'integer'],
             'service_id' => $hasActiveServices
                 ? ['required', 'integer', 'exists:services,id']
                 : ['nullable', 'integer', 'exists:services,id'],
@@ -73,14 +82,17 @@ class AppointmentController extends Controller
         $this->validateServiceOwnership($request, $mainId);
         $this->validateExtraServiceOwnership($request, $extraIds);
 
+        $master = $this->resolveMasterForAppointment($request, $data['master_id'] ?? null, $mainId, $extraIds);
+
         $start = Carbon::parse($data['starts_at']);
         $end = Carbon::parse($data['ends_at']);
-        if (! app(SlotAvailabilityService::class)->isSlotFree($request->user(), $start, $end)) {
+        if (! app(SlotAvailabilityService::class)->isSlotFree($request->user(), $start, $end, null, $master)) {
             return response()->json(['message' => 'Пересечение с другой записью.'], 422);
         }
 
         $appointment = Appointment::query()->create([
             'user_id' => $request->user()->id,
+            'master_id' => $master?->id,
             'client_name' => $data['client_name'],
             'service_id' => $data['service_id'] ?? null,
             'extra_service_ids' => $extraIds === [] ? null : $extraIds,
@@ -99,14 +111,19 @@ class AppointmentController extends Controller
                 ->get()
                 ->keyBy('id');
 
-        return response()->json($this->toCalendarEvent($appointment->load('service'), $extraMap), 201);
+        $mastersById = $request->user()->masters()->get()->keyBy('id');
+
+        return response()->json(
+            $this->toCalendarEvent($appointment->load(['service', 'master']), $extraMap, $mastersById),
+            201,
+        );
     }
 
     public function show(Request $request, Appointment $appointment)
     {
         $this->authorizeOwner($request, $appointment);
 
-        return response()->json($this->toDetail($appointment->load(['service', 'dialogSession.messages'])));
+        return response()->json($this->toDetail($appointment->load(['service', 'master', 'dialogSession.messages'])));
     }
 
     public function update(Request $request, Appointment $appointment)
@@ -115,6 +132,7 @@ class AppointmentController extends Controller
 
         $data = $request->validate([
             'client_name' => ['sometimes', 'string', 'max:255'],
+            'master_id' => ['nullable', 'integer'],
             'service_id' => ['nullable', 'exists:services,id'],
             'extra_service_ids' => ['nullable', 'array'],
             'extra_service_ids.*' => ['integer', 'distinct', 'exists:services,id'],
@@ -131,9 +149,21 @@ class AppointmentController extends Controller
             $extraIds = array_values(array_filter($extraIds, fn (int $id) => $id !== (int) ($mainId ?? 0)));
             $data['extra_service_ids'] = $extraIds === [] ? null : $extraIds;
             $this->validateExtraServiceOwnership($request, $extraIds);
+        } else {
+            $extraIds = $appointment->extra_service_ids ?? [];
         }
 
         $this->validateServiceOwnership($request, $data['service_id'] ?? $appointment->service_id);
+
+        if (array_key_exists('master_id', $data) || array_key_exists('service_id', $data)) {
+            $master = $this->resolveMasterForAppointment(
+                $request,
+                $data['master_id'] ?? $appointment->master_id,
+                $mainId,
+                $extraIds,
+            );
+            $data['master_id'] = $master?->id;
+        }
 
         $hasActiveServices = Service::query()
             ->where('user_id', $request->user()->id)
@@ -146,14 +176,49 @@ class AppointmentController extends Controller
         if (isset($data['starts_at']) || isset($data['ends_at'])) {
             $start = Carbon::parse($data['starts_at'] ?? $appointment->starts_at);
             $end = Carbon::parse($data['ends_at'] ?? $appointment->ends_at);
-            if (! app(SlotAvailabilityService::class)->isSlotFree($request->user(), $start, $end, $appointment->id)) {
+            $master = isset($data['master_id'])
+                ? Master::query()->find($data['master_id'])
+                : $appointment->master;
+            if (! app(SlotAvailabilityService::class)->isSlotFree($request->user(), $start, $end, $appointment->id, $master)) {
                 return response()->json(['message' => 'Пересечение с другой записью.'], 422);
             }
         }
 
         $appointment->update($data);
 
-        return response()->json($this->toDetail($appointment->fresh()->load(['service', 'dialogSession.messages'])));
+        return response()->json($this->toDetail($appointment->fresh()->load(['service', 'master', 'dialogSession.messages'])));
+    }
+
+    /**
+     * @param  array<int>  $extraIds
+     */
+    private function resolveMasterForAppointment(
+        Request $request,
+        ?int $masterId,
+        ?int $mainServiceId,
+        array $extraIds,
+    ): ?Master {
+        if ($masterId !== null) {
+            $this->authorizeMaster($request, $masterId);
+
+            return Master::query()->find($masterId);
+        }
+
+        $serviceIds = array_filter([$mainServiceId, ...$extraIds]);
+        if ($serviceIds === []) {
+            return $request->user()->primaryMaster();
+        }
+
+        $services = Service::query()
+            ->where('user_id', $request->user()->id)
+            ->whereIn('id', $serviceIds)
+            ->get();
+        $masterIds = $services->pluck('master_id')->filter()->unique();
+        if ($masterIds->count() === 1) {
+            return Master::query()->find($masterIds->first());
+        }
+
+        return $request->user()->primaryMaster();
     }
 
     private function validateServiceOwnership(Request $request, ?int $serviceId): void
@@ -180,9 +245,22 @@ class AppointmentController extends Controller
         abort_if($appointment->user_id !== $request->user()->id, 403);
     }
 
-    private function toCalendarEvent(Appointment $a, ?Collection $extraServiceById = null): array
+    private function authorizeMaster(Request $request, int $masterId): void
     {
+        $exists = Master::query()
+            ->where('id', $masterId)
+            ->where('user_id', $request->user()->id)
+            ->exists();
+        abort_if(! $exists, 422, 'Invalid master');
+    }
+
+    private function toCalendarEvent(
+        Appointment $a,
+        ?Collection $extraServiceById = null,
+        ?Collection $mastersById = null,
+    ): array {
         $extraServiceById = $extraServiceById ?? collect();
+        $mastersById = $mastersById ?? collect();
         $titles = collect();
         if ($a->service !== null) {
             $titles->push($a->service->title);
@@ -194,7 +272,9 @@ class AppointmentController extends Controller
             }
         }
         $servicePart = $titles->isNotEmpty() ? ' — '.$titles->implode(' + ') : '';
-        $title = $a->client_name.$servicePart;
+        $masterName = $a->master?->name ?? $mastersById->get($a->master_id)?->name;
+        $masterPrefix = $masterName !== null && $masterName !== '' ? '['.$masterName.'] ' : '';
+        $title = $masterPrefix.$a->client_name.$servicePart;
 
         return [
             'id' => (string) $a->id,
@@ -205,6 +285,8 @@ class AppointmentController extends Controller
             'extendedProps' => [
                 'client_name' => $a->client_name,
                 'status' => $a->status,
+                'master_id' => $a->master_id,
+                'master_name' => $masterName,
                 'service_id' => $a->service_id,
                 'extra_service_ids' => $a->extra_service_ids ?? [],
                 'dialog_session_id' => $a->dialog_session_id,
@@ -231,6 +313,8 @@ class AppointmentController extends Controller
         return [
             'id' => $a->id,
             'client_name' => $a->client_name,
+            'master_id' => $a->master_id,
+            'master' => $a->master ? ['id' => $a->master->id, 'name' => $a->master->name] : null,
             'service_id' => $a->service_id,
             'extra_service_ids' => $a->extra_service_ids ?? [],
             'starts_at' => $a->starts_at->toIso8601String(),

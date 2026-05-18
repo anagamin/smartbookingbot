@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Appointment;
+use App\Models\Master;
 use App\Models\Service;
 use App\Models\User;
 use App\Models\WorkingHour;
@@ -13,9 +14,7 @@ use Illuminate\Support\Collection;
 class SlotAvailabilityService
 {
     /**
-     * Свободные слоты в пределах календарных дней [rangeStart, rangeEnd] (включительно), по порядку.
-     *
-     * @return list<array{start: Carbon, end: Carbon}>
+     * @return list<array{start: Carbon, end: Carbon, master_id?: int, master_name?: string}>
      */
     public function suggestSlotsInDateRange(
         User $user,
@@ -24,15 +23,112 @@ class SlotAvailabilityService
         Carbon $rangeEnd,
         int $maxSuggestions = 60,
         ?int $durationMinutesOverride = null,
+        ?Master $master = null,
+    ): array {
+        if ($master !== null) {
+            return $this->suggestSlotsInDateRangeForMaster(
+                $user,
+                $master,
+                $service,
+                $rangeStart,
+                $rangeEnd,
+                $maxSuggestions,
+                $durationMinutesOverride,
+            );
+        }
+
+        $masters = $this->resolveMastersForServices($user, $service !== null ? collect([$service]) : collect());
+
+        if ($masters->count() <= 1) {
+            $single = $masters->first() ?? $user->primaryMaster();
+
+            return $single !== null
+                ? $this->suggestSlotsInDateRangeForMaster($user, $single, $service, $rangeStart, $rangeEnd, $maxSuggestions, $durationMinutesOverride)
+                : [];
+        }
+
+        return $this->suggestSlotsMergedForMasters($user, $masters, $service, $rangeStart, $rangeEnd, $maxSuggestions, $durationMinutesOverride);
+    }
+
+    /**
+     * @return list<array{start: Carbon, end: Carbon, master_id?: int, master_name?: string}>
+     */
+    public function suggestSlots(
+        User $user,
+        ?Service $service,
+        int $daysAhead = 14,
+        int $maxSuggestions = 24,
+        ?int $durationMinutesOverride = null,
+        ?Master $master = null,
+    ): array {
+        $end = now()->addDays($daysAhead)->endOfDay();
+
+        return $this->suggestSlotsInDateRange(
+            $user,
+            $service,
+            now()->startOfDay(),
+            $end,
+            $maxSuggestions,
+            $durationMinutesOverride,
+            $master,
+        );
+    }
+
+    /**
+     * @param  Collection<int, Service>  $services
+     * @return list<array{start: Carbon, end: Carbon, master_id?: int, master_name?: string}>
+     */
+    public function suggestSlotsForServices(
+        User $user,
+        Collection $services,
+        int $daysAhead = 14,
+        int $maxSuggestions = 48,
+        ?Master $master = null,
+    ): array {
+        $duration = max(1, $services->sum(fn (Service $s) => (int) $s->duration_minutes));
+        $singleService = $services->count() === 1 ? $services->first() : null;
+        $durationOverride = $services->count() > 1 ? $duration : null;
+
+        if ($master !== null) {
+            return $this->suggestSlots($user, $singleService, $daysAhead, $maxSuggestions, $durationOverride, $master);
+        }
+
+        $masters = $this->resolveMastersForServices($user, $services);
+
+        if ($masters->count() === 1) {
+            return $this->suggestSlots($user, $singleService, $daysAhead, $maxSuggestions, $durationOverride, $masters->first());
+        }
+
+        if ($masters->count() > 1) {
+            return $this->suggestSlotsMergedForMasters(
+                $user,
+                $masters,
+                $singleService,
+                now()->startOfDay(),
+                now()->addDays($daysAhead)->endOfDay(),
+                $maxSuggestions,
+                $durationOverride,
+            );
+        }
+
+        return $this->suggestSlots($user, $singleService, $daysAhead, $maxSuggestions, $durationOverride, $user->primaryMaster());
+    }
+
+    /**
+     * @return list<array{start: Carbon, end: Carbon}>
+     */
+    private function suggestSlotsInDateRangeForMaster(
+        User $user,
+        Master $master,
+        ?Service $service,
+        Carbon $rangeStart,
+        Carbon $rangeEnd,
+        int $maxSuggestions,
+        ?int $durationMinutesOverride,
     ): array {
         $duration = $durationMinutesOverride ?? $service?->duration_minutes ?? 60;
-        $working = WorkingHour::query()->where('user_id', $user->id)->get()->groupBy('weekday');
-        $appointments = Appointment::query()
-            ->where('user_id', $user->id)
-            ->confirmed()
-            ->where('ends_at', '>=', now()->startOfDay())
-            ->orderBy('starts_at')
-            ->get();
+        $working = WorkingHour::query()->where('master_id', $master->id)->get()->groupBy('weekday');
+        $appointments = $this->appointmentsForMaster($master);
 
         $from = $rangeStart->copy()->startOfDay();
         $to = $rangeEnd->copy()->startOfDay();
@@ -67,38 +163,85 @@ class SlotAvailabilityService
     }
 
     /**
-     * @return list<array{start: Carbon, end: Carbon}>
+     * @return list<array{start: Carbon, end: Carbon, master_id: int, master_name: string}>
      */
-    public function suggestSlots(User $user, ?Service $service, int $daysAhead = 14, int $maxSuggestions = 24, ?int $durationMinutesOverride = null): array
-    {
-        $duration = $durationMinutesOverride ?? $service?->duration_minutes ?? 60;
-        $working = WorkingHour::query()->where('user_id', $user->id)->get()->groupBy('weekday');
-        $appointments = Appointment::query()
-            ->where('user_id', $user->id)
-            ->confirmed()
-            ->where('ends_at', '>=', now()->startOfDay())
-            ->orderBy('starts_at')
-            ->get();
-
-        $suggestions = [];
-        $period = CarbonPeriod::create(now()->startOfDay(), now()->addDays($daysAhead)->endOfDay());
-
-        foreach ($period as $day) {
-            if (count($suggestions) >= $maxSuggestions) {
-                break;
-            }
-            $weekday = (int) $day->dayOfWeek;
-            /** @var Collection<int, WorkingHour> $slots */
-            $slots = $working->get($weekday, collect());
-            foreach ($slots as $wh) {
-                if (count($suggestions) >= $maxSuggestions) {
-                    break 2;
-                }
-                $this->fillDaySlots($day, $wh, $duration, $appointments, $suggestions, $maxSuggestions);
+    private function suggestSlotsMergedForMasters(
+        User $user,
+        Collection $masters,
+        ?Service $service,
+        Carbon $rangeStart,
+        Carbon $rangeEnd,
+        int $maxSuggestions,
+        ?int $durationMinutesOverride,
+    ): array {
+        $merged = [];
+        foreach ($masters as $master) {
+            foreach ($this->suggestSlotsInDateRangeForMaster(
+                $user,
+                $master,
+                $service,
+                $rangeStart,
+                $rangeEnd,
+                $maxSuggestions,
+                $durationMinutesOverride,
+            ) as $slot) {
+                $merged[] = [
+                    'start' => $slot['start'],
+                    'end' => $slot['end'],
+                    'master_id' => $master->id,
+                    'master_name' => $master->name,
+                ];
             }
         }
 
-        return $suggestions;
+        usort($merged, fn (array $a, array $b): int => $a['start']->timestamp <=> $b['start']->timestamp);
+
+        return array_slice($merged, 0, $maxSuggestions);
+    }
+
+    /**
+     * @param  Collection<int, Service>  $services
+     * @return Collection<int, Master>
+     */
+    public function resolveMastersForServices(User $user, Collection $services): Collection
+    {
+        if ($services->isEmpty()) {
+            return $user->masters()->orderBy('sort_order')->orderBy('id')->get();
+        }
+
+        $masterIds = $services->pluck('master_id')->filter()->unique()->values();
+
+        if ($masterIds->isEmpty()) {
+            $primary = $user->primaryMaster();
+
+            return $primary !== null ? collect([$primary]) : collect();
+        }
+
+        return Master::query()
+            ->where('user_id', $user->id)
+            ->whereIn('id', $masterIds->all())
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+    }
+
+    public function findMasterByName(User $user, string $name): ?Master
+    {
+        $needle = mb_strtolower(trim($name));
+        if ($needle === '') {
+            return null;
+        }
+
+        $masters = $user->masters()->get();
+        $exact = $masters->first(fn (Master $m) => mb_strtolower($m->name) === $needle);
+        if ($exact !== null) {
+            return $exact;
+        }
+
+        return $masters
+            ->filter(fn (Master $m) => str_contains(mb_strtolower($m->name), $needle) || str_contains($needle, mb_strtolower($m->name)))
+            ->sortByDesc(fn (Master $m) => mb_strlen($m->name))
+            ->first();
     }
 
     /**
@@ -140,26 +283,6 @@ class SlotAvailabilityService
 
     /**
      * @param  Collection<int, Appointment>  $appointments
-     * @param  list<array{start: Carbon, end: Carbon}>  $suggestions
-     */
-    private function fillDaySlots(
-        Carbon $day,
-        WorkingHour $wh,
-        int $durationMinutes,
-        Collection $appointments,
-        array &$suggestions,
-        int $maxSuggestions
-    ): void {
-        foreach ($this->slotsForWorkingWindow($day, $wh, $durationMinutes, $appointments) as $slot) {
-            if (count($suggestions) >= $maxSuggestions) {
-                return;
-            }
-            $suggestions[] = $slot;
-        }
-    }
-
-    /**
-     * @param  Collection<int, Appointment>  $appointments
      */
     private function overlapsBusy(Carbon $start, Carbon $end, Collection $appointments): bool
     {
@@ -172,8 +295,13 @@ class SlotAvailabilityService
         return false;
     }
 
-    public function isSlotFree(User $user, Carbon $start, Carbon $end, ?int $ignoreAppointmentId = null): bool
-    {
+    public function isSlotFree(
+        User $user,
+        Carbon $start,
+        Carbon $end,
+        ?int $ignoreAppointmentId = null,
+        ?Master $master = null,
+    ): bool {
         $q = Appointment::query()
             ->where('user_id', $user->id)
             ->confirmed()
@@ -181,6 +309,11 @@ class SlotAvailabilityService
                 $query->where('starts_at', '<', $end)
                     ->where('ends_at', '>', $start);
             });
+
+        if ($master !== null) {
+            $q->where('master_id', $master->id);
+        }
+
         if ($ignoreAppointmentId) {
             $q->where('id', '!=', $ignoreAppointmentId);
         }
@@ -188,11 +321,16 @@ class SlotAvailabilityService
         return ! $q->exists();
     }
 
-    public function isIntervalWithinWorkingHours(User $user, Carbon $start, Carbon $end): bool
+    public function isIntervalWithinWorkingHours(User $user, Carbon $start, Carbon $end, ?Master $master = null): bool
     {
+        $master = $master ?? $user->primaryMaster();
+        if ($master === null) {
+            return false;
+        }
+
         $weekday = (int) $start->dayOfWeek;
         $rows = WorkingHour::query()
-            ->where('user_id', $user->id)
+            ->where('master_id', $master->id)
             ->where('weekday', $weekday)
             ->get();
         if ($rows->isEmpty()) {
@@ -212,17 +350,31 @@ class SlotAvailabilityService
         return false;
     }
 
-    public function findServiceByTitle(User $user, string $title): ?Service
+    /** @return Collection<int, Appointment> */
+    private function appointmentsForMaster(Master $master): Collection
+    {
+        return Appointment::query()
+            ->where('master_id', $master->id)
+            ->confirmed()
+            ->where('ends_at', '>=', now()->startOfDay())
+            ->orderBy('starts_at')
+            ->get();
+    }
+
+    public function findServiceByTitle(User $user, string $title, ?Master $master = null): ?Service
     {
         $needle = mb_strtolower(trim($title));
         if ($needle === '') {
             return null;
         }
 
-        $candidates = Service::query()
+        $q = Service::query()
             ->where('user_id', $user->id)
-            ->where('is_active', true)
-            ->get();
+            ->where('is_active', true);
+        if ($master !== null) {
+            $q->where('master_id', $master->id);
+        }
+        $candidates = $q->get();
 
         $exact = $candidates->first(fn (Service $s) => mb_strtolower($s->title) === $needle);
         if ($exact !== null) {
@@ -239,11 +391,9 @@ class SlotAvailabilityService
     }
 
     /**
-     * Все услуги, упомянутые в тексте (подстрока названия, порядок — по первому вхождению в тексте).
-     *
      * @return Collection<int, Service>
      */
-    public function findServicesInDialogText(User $user, string $text): Collection
+    public function findServicesInDialogText(User $user, string $text, ?Master $master = null): Collection
     {
         $text = trim($text);
         if ($text === '') {
@@ -251,10 +401,13 @@ class SlotAvailabilityService
         }
 
         $lower = mb_strtolower($text);
-        $candidates = Service::query()
+        $q = Service::query()
             ->where('user_id', $user->id)
-            ->where('is_active', true)
-            ->get();
+            ->where('is_active', true);
+        if ($master !== null) {
+            $q->where('master_id', $master->id);
+        }
+        $candidates = $q->get();
 
         $positions = [];
         foreach ($candidates as $s) {
@@ -281,7 +434,7 @@ class SlotAvailabilityService
             if ($line === '') {
                 continue;
             }
-            $hit = $this->findServiceByTitle($user, $line);
+            $hit = $this->findServiceByTitle($user, $line, $master);
             if ($hit !== null && ! isset($seen[$hit->id])) {
                 $seen[$hit->id] = true;
                 $byDiscovery->push($hit);
@@ -299,7 +452,7 @@ class SlotAvailabilityService
             if (mb_strlen($w) < 3) {
                 continue;
             }
-            $hit = $this->findServiceByTitle($user, $w);
+            $hit = $this->findServiceByTitle($user, $w, $master);
             if ($hit !== null && ! isset($seen[$hit->id])) {
                 $seen[$hit->id] = true;
                 $byDiscovery->push($hit);
@@ -309,11 +462,8 @@ class SlotAvailabilityService
         return $byDiscovery;
     }
 
-    /**
-     * Первая услуга из {@see findServicesInDialogText} (для обратной совместимости).
-     */
-    public function findServiceInDialogText(User $user, string $text): ?Service
+    public function findServiceInDialogText(User $user, string $text, ?Master $master = null): ?Service
     {
-        return $this->findServicesInDialogText($user, $text)->first();
+        return $this->findServicesInDialogText($user, $text, $master)->first();
     }
 }

@@ -7,7 +7,7 @@ import interactionPlugin from '@fullcalendar/interaction'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import FullCalendar from '@fullcalendar/vue3'
 import Multiselect from '@vueform/multiselect'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 /**
  * Must match `timeZone` in calendarOptions — API stores datetimes in app timezone (Europe/Moscow).
@@ -40,17 +40,25 @@ function onDocumentVisibilityChange() {
   }
 }
 const services = ref<Array<{ id: number; title: string; duration_minutes: number }>>([])
+const masters = ref<Array<{ id: number; name: string }>>([])
+const businessMode = ref<'solo' | 'salon'>('solo')
+/** null = все мастера */
+const calendarMasterFilter = ref<number | null>(null)
 
 const modal = ref<'create' | 'edit' | null>(null)
 const editId = ref<number | null>(null)
 const form = ref({
   client_name: '',
+  master_id: null as number | null,
   service_ids: [] as number[],
   starts_at: '',
   ends_at: '',
   price_rub: '' as string | number,
   status: 'confirmed' as 'confirmed' | 'cancelled',
 })
+
+const showMasterFilter = computed(() => businessMode.value === 'salon' && masters.value.length > 1)
+const showMasterPickerInModal = computed(() => masters.value.length > 0)
 const sessionMessages = ref<Array<{ direction: string; text: string; created_at: string }>>([])
 const chatExcerpt = ref('')
 
@@ -154,8 +162,26 @@ function onStartsAtInput(e: Event) {
   recalculateEndFromStart()
 }
 
-async function loadServices() {
-  const { data } = await http.get('/services')
+async function loadMastersAndServices() {
+  const u = await http.get<{ business_mode: string; masters: Array<{ id: number; name: string }> }>('/user')
+  businessMode.value = u.data.business_mode === 'salon' ? 'salon' : 'solo'
+  masters.value = u.data.masters ?? []
+  const params =
+    form.value.master_id != null
+      ? { master_id: form.value.master_id }
+      : calendarMasterFilter.value != null
+        ? { master_id: calendarMasterFilter.value }
+        : {}
+  const { data } = await http.get('/services', { params })
+  services.value = data
+}
+
+async function loadServicesForFormMaster() {
+  if (form.value.master_id == null) {
+    services.value = []
+    return
+  }
+  const { data } = await http.get('/services', { params: { master_id: form.value.master_id } })
   services.value = data
 }
 
@@ -167,7 +193,11 @@ async function fetchEvents(
   try {
     const from = info.start.toISOString().slice(0, 10)
     const to = info.end.toISOString().slice(0, 10)
-    const { data } = await http.get('/appointments', { params: { from, to } })
+    const params: Record<string, string | number> = { from, to }
+    if (calendarMasterFilter.value != null) {
+      params.master_id = calendarMasterFilter.value
+    }
+    const { data } = await http.get('/appointments', { params })
     successCallback(data as EventInput[])
   } catch (e) {
     failureCallback(e instanceof Error ? e : new Error(String(e)))
@@ -182,14 +212,18 @@ function onDateClick(arg: { date: Date; dateStr: string; allDay: boolean }) {
       ? `${arg.dateStr.slice(0, 10)}T10:00`
       : fullCalendarCoercedDateToDatetimeLocal(arg.date)
   const ends_at = addMinutesToDatetimeLocal(starts_at, 60)
+  const defaultMasterId =
+    calendarMasterFilter.value ?? masters.value[0]?.id ?? null
   form.value = {
     client_name: '',
+    master_id: defaultMasterId,
     service_ids: [],
     starts_at,
     ends_at,
     price_rub: '',
     status: 'confirmed',
   }
+  void loadServicesForFormMaster()
   sessionMessages.value = []
   chatExcerpt.value = ''
 }
@@ -200,12 +234,14 @@ async function onEventClick(arg: { event: { id: string } }) {
   const { data } = await http.get(`/appointments/${editId.value}`)
   form.value = {
     client_name: data.client_name,
+    master_id: data.master_id ?? data.master?.id ?? masters.value[0]?.id ?? null,
     service_ids: appointmentServiceIdsFromDetail(data),
     starts_at: isoToDatetimeLocalInTimeZone(data.starts_at, CALENDAR_TIMEZONE),
     ends_at: isoToDatetimeLocalInTimeZone(data.ends_at, CALENDAR_TIMEZONE),
     price_rub: data.price_kopecks != null ? data.price_kopecks / 100 : '',
     status: data.status,
   }
+  void loadServicesForFormMaster()
   sessionMessages.value = data.messages || []
   chatExcerpt.value = data.chat_excerpt || ''
 }
@@ -214,6 +250,7 @@ async function saveAppointment() {
   const ids = form.value.service_ids
   const payload = {
     client_name: form.value.client_name,
+    master_id: form.value.master_id,
     service_id: ids.length ? ids[0] : null,
     extra_service_ids: ids.slice(1),
     starts_at: datetimeLocalToAppTimezoneSql(form.value.starts_at),
@@ -288,8 +325,20 @@ const calendarOptions = computed<CalendarOptions>(() => ({
   },
 }))
 
+function onCalendarMasterFilterChange() {
+  refetchCalendarEvents()
+  void loadMastersAndServices()
+}
+
+function onFormMasterChange() {
+  form.value.service_ids = []
+  void loadServicesForFormMaster()
+}
+
+watch(calendarMasterFilter, onCalendarMasterFilterChange)
+
 onMounted(() => {
-  void loadServices()
+  void loadMastersAndServices()
   calendarPollTimer = setInterval(() => {
     refetchCalendarEvents()
   }, CALENDAR_BACKGROUND_REFETCH_MS)
@@ -312,7 +361,19 @@ onBeforeUnmount(() => {
 
 <template>
   <div>
-    <h2 class="mb-4 text-xl font-semibold text-white">Календарь</h2>
+    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <h2 class="text-xl font-semibold text-white">Календарь</h2>
+      <div v-if="showMasterFilter" class="flex items-center gap-2 text-sm">
+        <label class="text-slate-400">Мастер:</label>
+        <select
+          v-model="calendarMasterFilter"
+          class="rounded-lg border border-white/10 bg-slate-900 px-3 py-1.5 text-white"
+        >
+          <option :value="null">Все мастера</option>
+          <option v-for="m in masters" :key="m.id" :value="m.id">{{ m.name }}</option>
+        </select>
+      </div>
+    </div>
     <div class="sb-calendar-root rounded-xl border border-white/10 bg-white p-1 text-slate-900 sm:p-2">
       <FullCalendar ref="calendarRef" :options="calendarOptions" />
     </div>
@@ -330,6 +391,16 @@ onBeforeUnmount(() => {
           <div>
             <label class="text-xs text-slate-400">Клиент</label>
             <input v-model="form.client_name" class="mt-1 w-full rounded border border-white/10 bg-slate-950 px-2 py-1 text-white" />
+          </div>
+          <div v-if="showMasterPickerInModal">
+            <label class="text-xs text-slate-400">Мастер</label>
+            <select
+              v-model="form.master_id"
+              class="mt-1 w-full rounded border border-white/10 bg-slate-950 px-2 py-1 text-white"
+              @change="onFormMasterChange"
+            >
+              <option v-for="m in masters" :key="m.id" :value="m.id">{{ m.name }}</option>
+            </select>
           </div>
           <div>
             <label class="text-xs text-slate-400">Услуги</label>

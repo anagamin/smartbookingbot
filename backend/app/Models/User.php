@@ -14,6 +14,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable([
     'name',
+    'business_mode',
     'email',
     'password',
     'sex',
@@ -37,6 +38,20 @@ class User extends Authenticatable
             if (empty($user->booking_slug)) {
                 $user->booking_slug = BookingSlug::generateUnique($user->name);
             }
+            if (empty($user->business_mode)) {
+                $user->business_mode = 'solo';
+            }
+        });
+
+        static::created(function (User $user): void {
+            if ($user->masters()->exists()) {
+                return;
+            }
+            Master::query()->create([
+                'user_id' => $user->id,
+                'name' => $user->name,
+                'sort_order' => 0,
+            ]);
         });
     }
 
@@ -57,9 +72,29 @@ class User extends Authenticatable
         return $this->hasMany(SocialAccount::class);
     }
 
+    public function masters(): HasMany
+    {
+        return $this->hasMany(Master::class)->orderBy('sort_order')->orderBy('id');
+    }
+
     public function services(): HasMany
     {
         return $this->hasMany(Service::class);
+    }
+
+    public function isSalon(): bool
+    {
+        return $this->business_mode === 'salon';
+    }
+
+    public function isSolo(): bool
+    {
+        return $this->business_mode !== 'salon';
+    }
+
+    public function primaryMaster(): ?Master
+    {
+        return $this->masters()->orderBy('sort_order')->orderBy('id')->first();
     }
 
     public function workingHours(): HasMany
@@ -153,6 +188,12 @@ class User extends Authenticatable
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'business_mode' => $this->business_mode ?? 'solo',
+            'masters' => $this->masters()->get(['id', 'name', 'sort_order'])->map(fn (Master $m) => [
+                'id' => $m->id,
+                'name' => $m->name,
+                'sort_order' => $m->sort_order,
+            ])->values()->all(),
             'email' => $this->email,
             'sex' => $this->sex,
             'balance_kopecks' => $this->balance_kopecks,

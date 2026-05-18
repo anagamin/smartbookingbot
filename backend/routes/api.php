@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\ContactMessageController;
+use App\Http\Controllers\Api\MasterController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OAuthController;
 use App\Http\Controllers\Api\ProfileController;
@@ -43,6 +44,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/oauth/yandex/link/start', [OAuthController::class, 'yandexStart']);
 
     Route::patch('/profile', [ProfileController::class, 'update']);
+
+    Route::get('/masters', [MasterController::class, 'index']);
+    Route::post('/masters', [MasterController::class, 'store']);
+    Route::put('/masters/sync', [MasterController::class, 'sync']);
+    Route::patch('/masters/{master}', [MasterController::class, 'update']);
+    Route::delete('/masters/{master}', [MasterController::class, 'destroy']);
 
     Route::get('/social-accounts', [SocialAccountController::class, 'index']);
     Route::delete('/social-accounts/{socialAccount}', [SocialAccountController::class, 'destroy']);

@@ -4,12 +4,14 @@ namespace App\Services;
 
 use App\DataTransferObjects\AiIntentResult;
 use App\Models\Appointment;
+use App\Models\Master;
 use App\Models\Dialog;
 use App\Models\DialogSession;
 use App\Models\Message;
 use App\Models\Notification;
 use App\Models\Service;
 use App\Models\SocialAccount;
+use App\Models\WorkingHour;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -117,7 +119,16 @@ class ConversationHandler
 
     private function handleAvailability(User $owner, DialogSession $session, AiIntentResult $ai): string
     {
-        $resolved = $this->resolveServicesFromContext($owner, $session, $ai);
+        $masterContext = $this->resolveMasterFromContext($owner, $session, $ai);
+
+        $resolved = $this->resolveServicesFromContext($owner, $session, $ai, $masterContext);
+        $mastersForServices = $this->slots->resolveMastersForServices($owner, $resolved);
+
+        if ($mastersForServices->count() > 1 && $masterContext === null) {
+            return $this->buildAskMasterMessage($owner, $resolved);
+        }
+
+        $master = $masterContext ?? $mastersForServices->first();
         $duration = $resolved->isEmpty()
             ? 60
             : max(1, $resolved->sum(fn (Service $s) => (int) $s->duration_minutes));
@@ -133,14 +144,16 @@ class ConversationHandler
             if ($end->lte(now())) {
                 return 'Это время уже прошло. Напишите актуальную дату и время.';
             }
-            if (! $this->slots->isIntervalWithinWorkingHours($owner, $start, $end)) {
+            if (! $this->slots->isIntervalWithinWorkingHours($owner, $start, $end, $master)) {
                 return 'В это время по графику мастер не принимает. Могу прислать свободные окна в рабочие часы — напишите день недели или «сегодня»/«завтра».';
             }
-            if (! $this->slots->isSlotFree($owner, $start, $end)) {
+            if (! $this->slots->isSlotFree($owner, $start, $end, null, $master)) {
                 return 'На '.$start->translatedFormat('j F, H:i').' уже есть запись. Могу предложить другие слоты — напишите удобный день.';
             }
 
-            return 'На '.$start->translatedFormat('j F, H:i').' свободно. Если хотите записаться — напишите, что подтверждаете это время.';
+            $masterLabel = $master !== null ? ' у '.$master->name : '';
+
+            return 'На '.$start->translatedFormat('j F, H:i').$masterLabel.' свободно. Если хотите записаться — напишите, что подтверждаете это время.';
         }
 
         $rangeEnd = $this->normalizeAiDate($ai->dateEnd) ?? $date;
@@ -148,16 +161,21 @@ class ConversationHandler
             $rangeEnd = $date;
         }
 
-        $suggestions = $date !== null
-            ? $this->slots->suggestSlotsInDateRange(
+        if ($date !== null) {
+            $suggestions = $this->slots->suggestSlotsInDateRange(
                 $owner,
                 $singleService,
                 Carbon::parse($date),
                 Carbon::parse($rangeEnd ?? $date),
                 80,
                 $durationOverride,
-            )
-            : $this->slots->suggestSlots($owner, $singleService, 14, 24, $durationOverride);
+                $master,
+            );
+        } elseif ($resolved->isNotEmpty() && $mastersForServices->count() > 1 && $master === null) {
+            $suggestions = $this->slots->suggestSlotsForServices($owner, $resolved, 14, 48);
+        } else {
+            $suggestions = $this->slots->suggestSlots($owner, $singleService, 14, 24, $durationOverride, $master);
+        }
 
         if ($suggestions === []) {
             return 'Свободных окон в ближайшие дни не нашла (проверьте график работы в кабинете или напишите желаемый день — уточню у мастера).';
@@ -174,7 +192,11 @@ class ConversationHandler
         $byDay = [];
         foreach ($suggestions as $s) {
             $key = $s['start']->toDateString();
-            $byDay[$key][] = $s['start']->format('H:i');
+            $label = $s['start']->format('H:i');
+            if (isset($s['master_name']) && $s['master_name'] !== '') {
+                $label .= ' ('.$s['master_name'].')';
+            }
+            $byDay[$key][] = $label;
         }
         ksort($byDay);
         $parts = [];
@@ -197,7 +219,9 @@ class ConversationHandler
 
             return 'Уточните, пожалуйста, дату и время записи одним сообщением.';
         }
-        $services = $this->resolveServicesFromContext($owner, $session, $ai);
+        $masterContext = $this->resolveMasterFromContext($owner, $session, $ai);
+
+        $services = $this->resolveServicesFromContext($owner, $session, $ai, $masterContext);
         if ($services->isEmpty()) {
             $active = Service::query()
                 ->where('user_id', $owner->id)
@@ -212,13 +236,20 @@ class ConversationHandler
 
             return $this->buildAskServiceMessage($active);
         }
+
+        $mastersForServices = $this->slots->resolveMastersForServices($owner, $services);
+        if ($mastersForServices->count() > 1 && $masterContext === null) {
+            return $this->buildAskMasterMessage($owner, $services);
+        }
+        $master = $masterContext ?? $mastersForServices->first();
+
         $duration = max(1, $services->sum(fn (Service $s) => (int) $s->duration_minutes));
         $start = Carbon::parse($resolvedDate.' '.$ai->time);
         $end = $start->copy()->addMinutes($duration);
-        if (! $this->slots->isIntervalWithinWorkingHours($owner, $start, $end)) {
+        if (! $this->slots->isIntervalWithinWorkingHours($owner, $start, $end, $master)) {
             return 'Это время вне графика работы. Выберите другое время в рабочие часы или напишите день — пришлю свободные окна.';
         }
-        if (! $this->slots->isSlotFree($owner, $start, $end)) {
+        if (! $this->slots->isSlotFree($owner, $start, $end, null, $master)) {
             return 'Это время уже занято. Предлагаю другое — напишите удобный день, я пришлю свободные слоты.';
         }
         $price = $services->sum(fn (Service $s) => (int) ($s->price_kopecks ?? 0));
@@ -226,6 +257,7 @@ class ConversationHandler
         $primaryId = array_shift($orderedIds);
         $appointment = Appointment::query()->create([
             'user_id' => $owner->id,
+            'master_id' => $master?->id,
             'service_id' => $primaryId,
             'extra_service_ids' => $orderedIds === [] ? null : $orderedIds,
             'dialog_session_id' => $session->id,
@@ -241,7 +273,58 @@ class ConversationHandler
             'appointment_id' => $appointment->id,
         ]);
 
-        return 'Запись зафиксирована на '.$start->translatedFormat('j F Y, H:i').'. Ждём вас!';
+        $masterNote = $master !== null ? ' к '.$master->name : '';
+
+        return 'Запись зафиксирована на '.$start->translatedFormat('j F Y, H:i').$masterNote.'. Ждём вас!';
+    }
+
+    /**
+     * @return Master|null|'ask'
+     */
+    private function resolveMasterFromContext(User $owner, DialogSession $session, AiIntentResult $ai): Master|string|null
+    {
+        if ($ai->master !== null && $ai->master !== '') {
+            $found = $this->slots->findMasterByName($owner, $ai->master);
+            if ($found !== null) {
+                return $found;
+            }
+        }
+
+        $messages = Message::query()
+            ->where('dialog_session_id', $session->id)
+            ->orderByDesc('id')
+            ->limit(20)
+            ->pluck('text');
+
+        foreach ($messages as $text) {
+            $masters = $owner->masters()->get();
+            foreach ($masters as $m) {
+                if (mb_stripos((string) $text, $m->name) !== false) {
+                    return $m;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  Collection<int, Service>|null  $services
+     */
+    private function buildAskMasterMessage(User $owner, ?Collection $services = null): string
+    {
+        $masters = $owner->masters()->orderBy('sort_order')->orderBy('id')->get();
+        if ($masters->isEmpty()) {
+            return 'Уточните, пожалуйста, к какому мастеру записаться.';
+        }
+
+        $names = $masters->pluck('name')->implode(', ');
+        $serviceHint = '';
+        if ($services !== null && $services->isNotEmpty()) {
+            $serviceHint = ' для «'.$services->pluck('title')->implode(' + ').'»';
+        }
+
+        return 'К какому мастеру записаться'.$serviceHint.'? Доступны: '.$names.'. Напишите имя мастера.';
     }
 
     private function handleBookingCancel(
@@ -371,12 +454,15 @@ class ConversationHandler
      *
      * @return Collection<int, Service>
      */
-    private function resolveServicesFromContext(User $owner, DialogSession $session, AiIntentResult $ai): Collection
+    private function resolveServicesFromContext(User $owner, DialogSession $session, AiIntentResult $ai, ?Master $master = null): Collection
     {
-        $active = Service::query()
+        $activeQuery = Service::query()
             ->where('user_id', $owner->id)
-            ->where('is_active', true)
-            ->get()
+            ->where('is_active', true);
+        if ($master !== null) {
+            $activeQuery->where('master_id', $master->id);
+        }
+        $active = $activeQuery->get()
             ->sortByDesc(fn (Service $s) => mb_strlen($s->title))
             ->values();
 
@@ -390,7 +476,7 @@ class ConversationHandler
 
         $resolved = collect();
         foreach ($ai->services as $title) {
-            $s = $this->slots->findServiceByTitle($owner, $title);
+            $s = $this->slots->findServiceByTitle($owner, $title, $master);
             if ($s !== null) {
                 $resolved->push($s);
             }
@@ -400,7 +486,7 @@ class ConversationHandler
             return $resolved;
         }
 
-        $fromRecent = $this->resolveServicesFromRecentMessages($owner, $session);
+        $fromRecent = $this->resolveServicesFromRecentMessages($owner, $session, $master);
         if ($fromRecent->isNotEmpty()) {
             return $fromRecent;
         }
@@ -416,7 +502,7 @@ class ConversationHandler
             return collect();
         }
 
-        return $this->slots->findServicesInDialogText($owner, $corpus);
+        return $this->slots->findServicesInDialogText($owner, $corpus, $master);
     }
 
     /**
@@ -425,7 +511,7 @@ class ConversationHandler
      *
      * @return Collection<int, Service>
      */
-    private function resolveServicesFromRecentMessages(User $owner, DialogSession $session): Collection
+    private function resolveServicesFromRecentMessages(User $owner, DialogSession $session, ?Master $master = null): Collection
     {
         $messages = Message::query()
             ->where('dialog_session_id', $session->id)
@@ -438,7 +524,7 @@ class ConversationHandler
             if ($t === '') {
                 continue;
             }
-            $found = $this->slots->findServicesInDialogText($owner, $t);
+            $found = $this->slots->findServicesInDialogText($owner, $t, $master);
             if ($found->isNotEmpty()) {
                 return $found;
             }
@@ -501,6 +587,7 @@ class ConversationHandler
 - confidence: число 0..1
 - service: string или null (одна услуга или краткое описание; для обратной совместимости)
 - services: массив строк — названия услуг из массива services во входных данных (можно 0, 1 или несколько). Если клиент хочет несколько услуг подряд в один визит — перечисли каждую отдельной строкой в этом массиве (например ["Маникюр","Педикюр"]). Если одна услуга — либо одна строка в services, либо только service.
+- master: string или null — имя мастера из массива masters во входных данных, если клиент явно указал к кому записывается
 - date: "Y-m-d" или null
 - date_end: "Y-m-d" или null — последний день диапазона включительно, если речь о нескольких днях; иначе null (или то же, что date)
 - time: "H:i" или null
@@ -521,19 +608,32 @@ PROMPT;
 
     private function buildUserPayload(User $owner, Dialog $dialog, DialogSession $session, string $inboundText): string
     {
+        $masters = $owner->masters()->orderBy('sort_order')->orderBy('id')->get();
+        $mastersJson = $masters->map(fn (Master $m) => [
+            'id' => $m->id,
+            'name' => $m->name,
+        ])->values()->all();
+
         $services = Service::query()->where('user_id', $owner->id)->where('is_active', true)->get();
         $servicesJson = $services->map(fn (Service $s) => [
             'title' => $s->title,
+            'master_id' => $s->master_id,
+            'master_name' => $masters->firstWhere('id', $s->master_id)?->name,
             'price_kopecks' => $s->price_kopecks,
             'duration_minutes' => $s->duration_minutes,
             'description' => $s->description,
         ])->values()->all();
 
-        $working = $owner->workingHours()->get()->map(fn ($w) => [
-            'weekday' => $w->weekday,
-            'opens_at' => (string) $w->opens_at,
-            'closes_at' => (string) $w->closes_at,
-        ])->values()->all();
+        $working = WorkingHour::query()
+            ->whereIn('master_id', $masters->pluck('id'))
+            ->get()
+            ->map(fn ($w) => [
+                'master_id' => $w->master_id,
+                'master_name' => $masters->firstWhere('id', $w->master_id)?->name,
+                'weekday' => $w->weekday,
+                'opens_at' => (string) $w->opens_at,
+                'closes_at' => (string) $w->closes_at,
+            ])->values()->all();
 
         $busy = Appointment::query()
             ->where('user_id', $owner->id)
@@ -543,6 +643,8 @@ PROMPT;
             ->limit(40)
             ->get()
             ->map(fn (Appointment $a) => [
+                'master_id' => $a->master_id,
+                'master_name' => $masters->firstWhere('id', $a->master_id)?->name,
                 'start' => $a->starts_at->toIso8601String(),
                 'end' => $a->ends_at->toIso8601String(),
             ])->all();
@@ -564,7 +666,9 @@ PROMPT;
                 'current_year' => (int) now()->year,
                 'timezone' => config('app.timezone'),
             ],
+            'business_mode' => $owner->business_mode ?? 'solo',
             'owner_services_text' => $owner->services_description,
+            'masters' => $mastersJson,
             'services' => $servicesJson,
             'working_hours' => $working,
             'busy' => $busy,

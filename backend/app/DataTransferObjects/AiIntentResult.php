@@ -12,6 +12,7 @@ final class AiIntentResult
         public readonly float $confidence,
         public readonly ?string $service,
         public readonly array $services,
+        public readonly ?string $master,
         public readonly ?string $date,
         public readonly ?string $dateEnd,
         public readonly ?string $time,
@@ -52,11 +53,24 @@ final class AiIntentResult
 
         $firstTitle = $servicesList[0] ?? $service;
 
+        $master = null;
+        foreach (['master', 'master_name', 'staff'] as $key) {
+            if (! array_key_exists($key, $data)) {
+                continue;
+            }
+            $v = $data[$key];
+            if (is_string($v) && trim($v) !== '') {
+                $master = trim($v);
+                break;
+            }
+        }
+
         return new self(
             intent: (string) ($data['intent'] ?? 'other'),
             confidence: (float) ($data['confidence'] ?? 0),
             service: $firstTitle,
             services: $servicesList,
+            master: $master,
             date: isset($data['date']) ? (string) $data['date'] : null,
             dateEnd: is_string($dateEnd) && $dateEnd !== '' ? $dateEnd : null,
             time: isset($data['time']) && $data['time'] !== null ? (string) $data['time'] : null,

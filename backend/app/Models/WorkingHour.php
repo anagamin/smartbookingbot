@@ -11,6 +11,7 @@ class WorkingHour extends Model
 
     protected $fillable = [
         'user_id',
+        'master_id',
         'weekday',
         'opens_at',
         'closes_at',
@@ -19,5 +20,10 @@ class WorkingHour extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function master(): BelongsTo
+    {
+        return $this->belongsTo(Master::class);
     }
 }

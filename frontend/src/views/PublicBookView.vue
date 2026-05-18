@@ -5,22 +5,34 @@ import axios from 'axios'
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
+type MasterItem = { id: number; name: string }
+
 type ServiceItem = {
   id: number
+  master_id: number | null
   title: string
   description: string | null
   price_kopecks: number
   duration_minutes: number
 }
 
+type SlotItem = {
+  starts_at: string
+  ends_at: string
+  time: string
+  master_id?: number
+  master_name?: string | null
+}
+
 type SlotDay = {
   date: string
   label: string
-  slots: Array<{ starts_at: string; ends_at: string; time: string }>
+  slots: SlotItem[]
 }
 
 type BookingConfirmation = {
   clientName: string
+  masterName: string | null
   dateLabel: string
   timeLabel: string
   services: string[]
@@ -36,6 +48,10 @@ const slug = computed(() => String(route.params.slug ?? ''))
 const loading = ref(true)
 const notFound = ref(false)
 const ownerName = ref('')
+const isSalon = ref(false)
+const masters = ref<MasterItem[]>([])
+const selectedMasterId = ref<number | null>(null)
+const allServices = ref<ServiceItem[]>([])
 const services = ref<ServiceItem[]>([])
 
 const clientName = ref('')
@@ -49,9 +65,24 @@ const submitLoading = ref(false)
 const bookingConfirmation = ref<BookingConfirmation | null>(null)
 const errorMessage = ref('')
 
+const showMasterPicker = computed(() => isSalon.value && masters.value.length > 1)
+
 const selectedServices = computed(() =>
   services.value.filter((s) => serviceIds.value.includes(s.id)),
 )
+
+const servicesForMaster = computed(() => {
+  if (!showMasterPicker.value || selectedMasterId.value == null) {
+    return allServices.value
+  }
+  return allServices.value.filter((s) => s.master_id === selectedMasterId.value)
+})
+
+watch(selectedMasterId, () => {
+  services.value = servicesForMaster.value
+  serviceIds.value = serviceIds.value.filter((id) => services.value.some((s) => s.id === id))
+  selectedStartsAt.value = ''
+})
 
 const totalDurationMinutes = computed(() => {
   const list = selectedServices.value
@@ -93,6 +124,9 @@ function startNewBooking(): void {
   selectedStartsAt.value = ''
   comment.value = ''
   errorMessage.value = ''
+  if (showMasterPicker.value && !selectedMasterId.value && masters.value[0]) {
+    selectedMasterId.value = masters.value[0].id
+  }
   void loadSlots()
 }
 
@@ -104,12 +138,21 @@ async function loadPage(): Promise<void> {
   try {
     const { data } = await publicHttp.get<{
       owner_name: string
+      is_salon: boolean
+      masters: MasterItem[]
       services: ServiceItem[]
     }>(`/public/book/${encodeURIComponent(slug.value)}`)
     ownerName.value = data.owner_name
+    isSalon.value = data.is_salon
+    masters.value = data.masters ?? []
+    allServices.value = data.services
     services.value = data.services
-    if (data.services.length === 1) {
-      serviceIds.value = [data.services[0].id]
+    if (showMasterPicker.value && masters.value[0]) {
+      selectedMasterId.value = masters.value[0].id
+      services.value = servicesForMaster.value
+    }
+    if (services.value.length === 1) {
+      serviceIds.value = [services.value[0].id]
     }
   } catch (e: unknown) {
     if (axios.isAxiosError(e) && e.response?.status === 404) {
@@ -131,9 +174,13 @@ async function loadSlots(): Promise<void> {
   slotsLoading.value = true
   errorMessage.value = ''
   try {
+    const params: Record<string, unknown> = { service_ids: serviceIds.value }
+    if (selectedMasterId.value != null) {
+      params.master_id = selectedMasterId.value
+    }
     const { data } = await publicHttp.get<{ days: SlotDay[] }>(
       `/public/book/${encodeURIComponent(slug.value)}/slots`,
-      { params: { service_ids: serviceIds.value } },
+      { params },
     )
     slotDays.value = data.days ?? []
     if (!slotDays.value.some((d) => d.slots.some((s) => s.starts_at === selectedStartsAt.value))) {
@@ -151,12 +198,20 @@ function onServiceIdsUpdate(v: unknown): void {
   serviceIds.value = Array.isArray(v) ? v.map((id) => Number(id)) : []
 }
 
+function onSlotSelect(slot: SlotItem): void {
+  selectedStartsAt.value = slot.starts_at
+  if (slot.master_id != null) {
+    selectedMasterId.value = slot.master_id
+  }
+}
+
 watch(serviceIds, () => {
   void loadSlots()
 })
 
 watch(slug, () => {
   serviceIds.value = []
+  selectedMasterId.value = null
   selectedStartsAt.value = ''
   bookingConfirmation.value = null
   void loadPage()
@@ -172,6 +227,10 @@ async function submitBooking(): Promise<void> {
     errorMessage.value = 'Выберите хотя бы одну услугу.'
     return
   }
+  if (showMasterPicker.value && selectedMasterId.value == null) {
+    errorMessage.value = 'Выберите мастера.'
+    return
+  }
   if (!selectedStartsAt.value) {
     errorMessage.value = 'Выберите время записи.'
     return
@@ -184,18 +243,24 @@ async function submitBooking(): Promise<void> {
 
   submitLoading.value = true
   try {
-    const { data } = await publicHttp.post<{
-      message: string
-      appointment: { starts_at: string; ends_at: string }
-    }>(`/public/book/${encodeURIComponent(slug.value)}/appointments`, {
+    const body: Record<string, unknown> = {
       client_name: name,
       service_ids: serviceIds.value,
       starts_at: startsAt,
       comment: comment.value.trim() || null,
-    })
+    }
+    if (selectedMasterId.value != null) {
+      body.master_id = selectedMasterId.value
+    }
+
+    const { data } = await publicHttp.post<{
+      message: string
+      appointment: { starts_at: string; ends_at: string; master_name?: string }
+    }>(`/public/book/${encodeURIComponent(slug.value)}/appointments`, body)
 
     bookingConfirmation.value = {
       clientName: name,
+      masterName: data.appointment.master_name ?? masters.value.find((m) => m.id === selectedMasterId.value)?.name ?? null,
       dateLabel: formatBookingDate(data.appointment.starts_at),
       timeLabel: formatBookingTimeRange(data.appointment.starts_at, data.appointment.ends_at),
       services: bookedServices,
@@ -236,7 +301,9 @@ async function submitBooking(): Promise<void> {
 
       <template v-else>
         <h1 class="text-2xl font-semibold text-white">{{ ownerName }}</h1>
-        <p class="mt-1 text-sm text-slate-400">Выберите услуги и удобное время</p>
+        <p class="mt-1 text-sm text-slate-400">
+          {{ showMasterPicker ? 'Выберите мастера, услуги и удобное время' : 'Выберите услуги и удобное время' }}
+        </p>
 
         <p v-if="errorMessage" class="mt-4 rounded-lg border border-red-500/30 bg-red-950/30 px-4 py-3 text-sm text-red-300">
           {{ errorMessage }}
@@ -248,7 +315,9 @@ async function submitBooking(): Promise<void> {
         >
           <h2 class="text-lg font-semibold text-emerald-100">Запись оформлена</h2>
           <p class="mt-1 text-sm text-emerald-200/80">
-            {{ bookingConfirmation.clientName }}, ждём вас у {{ ownerName }}.
+            {{ bookingConfirmation.clientName }}, ждём вас
+            <template v-if="bookingConfirmation.masterName"> у {{ bookingConfirmation.masterName }}</template>
+            <template v-else> у {{ ownerName }}</template>.
           </p>
           <dl class="mt-5 space-y-3 text-sm">
             <div class="flex flex-col gap-0.5 sm:flex-row sm:gap-4">
@@ -284,6 +353,17 @@ async function submitBooking(): Promise<void> {
         </div>
 
         <form v-else class="mt-8 space-y-6" @submit.prevent="submitBooking">
+          <div v-if="showMasterPicker" class="rounded-xl border border-white/10 bg-slate-900/40 p-5">
+            <label class="text-xs text-slate-400">Мастер</label>
+            <select
+              v-model="selectedMasterId"
+              required
+              class="mt-2 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white"
+            >
+              <option v-for="m in masters" :key="m.id" :value="m.id">{{ m.name }}</option>
+            </select>
+          </div>
+
           <div class="rounded-xl border border-white/10 bg-slate-900/40 p-5">
             <label class="text-xs text-slate-400">Ваше имя</label>
             <input
@@ -347,7 +427,7 @@ async function submitBooking(): Promise<void> {
                         ? 'border-indigo-400 bg-indigo-500/20 text-white'
                         : 'border-white/15 text-slate-300 hover:border-white/30 hover:bg-white/5'
                     "
-                    @click="selectedStartsAt = slot.starts_at"
+                    @click="onSlotSelect(slot)"
                   >
                     {{ slot.time }}
                   </button>

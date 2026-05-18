@@ -2,6 +2,8 @@
 
 namespace Tests;
 
+use App\Models\Master;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 abstract class DatabaseTestCase extends TestCase
@@ -15,5 +17,10 @@ abstract class DatabaseTestCase extends TestCase
         }
 
         parent::setUp();
+    }
+
+    protected function primaryMaster(User $user): Master
+    {
+        return $user->masters()->orderBy('sort_order')->orderBy('id')->firstOrFail();
     }
 }

@@ -4,6 +4,8 @@ import axios from 'axios'
 import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const name = ref('')
+const businessMode = ref<'solo' | 'salon'>('solo')
+const masters = ref<Array<{ id?: number; name: string }>>([{ name: '' }])
 const sex = ref('')
 const services_description = ref('')
 const bookingSlug = ref('')
@@ -93,6 +95,8 @@ async function loadVkGroup(): Promise<void> {
 async function load(): Promise<void> {
   const u = await http.get<{
     name: string
+    business_mode: 'solo' | 'salon'
+    masters: Array<{ id: number; name: string }>
     sex: string | null
     services_description: string | null
     booking_slug: string | null
@@ -101,6 +105,11 @@ async function load(): Promise<void> {
     subscription_active: boolean
   }>('/user')
   name.value = u.data.name
+  businessMode.value = u.data.business_mode === 'salon' ? 'salon' : 'solo'
+  masters.value =
+    u.data.masters?.length > 0
+      ? u.data.masters.map((m) => ({ id: m.id, name: m.name }))
+      : [{ name: u.data.name }]
   sex.value = u.data.sex || ''
   services_description.value = u.data.services_description || ''
   bookingSlug.value = u.data.booking_slug || ''
@@ -182,16 +191,71 @@ async function copyBookingLink(): Promise<void> {
   }
 }
 
+function addMasterRow(): void {
+  masters.value.push({ name: '' })
+}
+
+function removeMasterRow(index: number): void {
+  if (index === 0) return
+  masters.value.splice(index, 1)
+}
+
+async function saveBusinessMode(mode: 'solo' | 'salon'): Promise<void> {
+  if (mode === businessMode.value) return
+  msg.value = ''
+  msgIsError.value = false
+  try {
+    const { data } = await http.patch<{ user: { business_mode: string; masters: Array<{ id: number; name: string }> } }>(
+      '/profile',
+      { business_mode: mode },
+    )
+    businessMode.value = data.user.business_mode === 'salon' ? 'salon' : 'solo'
+    if (data.user.masters?.length) {
+      masters.value = data.user.masters.map((m) => ({ id: m.id, name: m.name }))
+    }
+    if (businessMode.value === 'solo' && masters.value[0]) {
+      name.value = masters.value[0].name
+    }
+    msg.value = 'Режим сохранён'
+    await reloadCabinetUser?.()
+  } catch (e: unknown) {
+    msgIsError.value = true
+    msg.value = axios.isAxiosError(e)
+      ? String((e.response?.data as { message?: string })?.message || e.message || 'Ошибка сохранения')
+      : 'Ошибка сохранения'
+  }
+}
+
 async function saveProfile(): Promise<void> {
   msg.value = ''
   msgIsError.value = false
   try {
-    await http.patch('/profile', {
-      name: name.value,
-      sex: sex.value || null,
-      services_description: services_description.value,
-    })
+    if (businessMode.value === 'salon') {
+      const salonName = name.value.trim()
+      await http.patch('/profile', {
+        name: salonName || undefined,
+        sex: sex.value || null,
+      })
+      await http.put('/masters/sync', {
+        masters: masters.value.map((m) => ({
+          id: m.id,
+          name: m.name.trim(),
+        })),
+      })
+    } else {
+      const masterName = masters.value[0]?.name?.trim() || name.value.trim()
+      await http.patch('/profile', {
+        name: masterName,
+        sex: sex.value || null,
+      })
+      if (masters.value[0]?.id) {
+        await http.patch(`/masters/${masters.value[0].id}`, { name: masterName })
+      }
+      name.value = masterName
+      if (masters.value[0]) masters.value[0].name = masterName
+    }
     msg.value = 'Сохранено'
+    await reloadCabinetUser?.()
   } catch (e: unknown) {
     msgIsError.value = true
     msg.value = axios.isAxiosError(e)
@@ -385,10 +449,63 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
+    <div class="rounded-xl border border-white/10 bg-slate-900/40 p-6">
+      <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Тип аккаунта</p>
+      <div class="mt-3 inline-flex rounded-lg border border-white/10 bg-slate-950 p-1">
+        <button
+          type="button"
+          class="rounded-md px-4 py-2 text-sm transition"
+          :class="businessMode === 'solo' ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:text-white'"
+          @click="saveBusinessMode('solo')"
+        >
+          Частный мастер
+        </button>
+        <button
+          type="button"
+          class="rounded-md px-4 py-2 text-sm transition"
+          :class="businessMode === 'salon' ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:text-white'"
+          @click="saveBusinessMode('salon')"
+        >
+          Салон
+        </button>
+      </div>
+    </div>
+
     <form class="space-y-4 rounded-xl border border-white/10 bg-slate-900/40 p-6" @submit.prevent="saveProfile">
-      <div>
+      <div v-if="businessMode === 'salon'">
+        <label class="text-xs text-slate-400">Название салона</label>
+        <input v-model="name" class="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white" placeholder="Название для клиентов" />
+      </div>
+      <div v-else>
         <label class="text-xs text-slate-400">Имя</label>
-        <input v-model="name" class="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white" />
+        <input v-model="masters[0].name" class="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white" />
+      </div>
+      <div v-if="businessMode === 'salon'" class="space-y-2">
+        <div class="flex items-center justify-between gap-2">
+          <label class="text-xs text-slate-400">Мастера</label>
+          <button type="button" class="rounded-lg border border-white/20 px-3 py-1 text-xs text-white hover:bg-white/5" @click="addMasterRow">
+            Добавить мастера
+          </button>
+        </div>
+        <table class="w-full text-left text-sm text-slate-300">
+          <thead>
+            <tr class="text-xs uppercase text-slate-500">
+              <th class="py-2">Имя мастера</th>
+              <th class="w-24" />
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(m, idx) in masters" :key="m.id ?? `new-${idx}`" class="border-t border-white/5">
+              <td class="py-2 pr-2">
+                <input v-model="m.name" class="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white" placeholder="Имя" />
+              </td>
+              <td class="py-2 text-right">
+                <button v-if="idx > 0" type="button" class="text-rose-400 hover:underline" @click="removeMasterRow(idx)">Удалить</button>
+                <span v-else class="text-xs text-slate-600">основной</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
       <div>
         <label class="text-xs text-slate-400">Пол</label>

@@ -29,14 +29,17 @@ class PublicBookingTest extends DatabaseTestCase
         Carbon::setTestNow(Carbon::parse('2026-05-19 08:00:00', 'Europe/Moscow'));
 
         $user = User::factory()->create(['booking_slug' => 'maria', 'name' => 'Мария']);
+        $master = $this->primaryMaster($user);
         WorkingHour::query()->create([
             'user_id' => $user->id,
+            'master_id' => $master->id,
             'weekday' => 1,
             'opens_at' => '10:00',
             'closes_at' => '18:00',
         ]);
         $svc = Service::query()->create([
             'user_id' => $user->id,
+            'master_id' => $master->id,
             'title' => 'Маникюр',
             'price_kopecks' => 150_000,
             'duration_minutes' => 60,
@@ -68,6 +71,7 @@ class PublicBookingTest extends DatabaseTestCase
         $this->assertSame('Анна', $appointment->client_name);
         $this->assertSame('Снятие гель-лака', $appointment->chat_excerpt);
         $this->assertSame(150_000, $appointment->price_kopecks);
+        $this->assertSame($master->id, $appointment->master_id);
 
         Carbon::setTestNow();
     }

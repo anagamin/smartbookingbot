@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import http from '@/api/http'
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+
+type MasterRow = { id: number; name: string }
 
 const description = ref('')
+const masters = ref<MasterRow[]>([])
+const selectedMasterId = ref<number | null>(null)
+const businessMode = ref<'solo' | 'salon'>('solo')
+
 const services = ref<
   Array<{
     id: number
@@ -29,12 +35,24 @@ const newSvc = reactive({
   duration_minutes: 60,
 })
 
-async function load() {
-  const u = await http.get('/user')
-  description.value = u.data.services_description || ''
-  const s = await http.get('/services')
+const showMasterTabs = computed(() => businessMode.value === 'salon' && masters.value.length > 1)
+
+function resetSlotsDefaults() {
+  for (const slot of slots) {
+    slot.opens_at = '10:00'
+    slot.closes_at = '19:00'
+    slot.enabled = slot.weekday >= 1 && slot.weekday <= 5
+  }
+}
+
+async function loadMasterData() {
+  if (selectedMasterId.value == null) return
+  const [s, wh] = await Promise.all([
+    http.get('/services', { params: { master_id: selectedMasterId.value } }),
+    http.get('/working-hours', { params: { master_id: selectedMasterId.value } }),
+  ])
   services.value = s.data
-  const wh = await http.get('/working-hours')
+  resetSlotsDefaults()
   for (const row of wh.data as Array<{ weekday: number; opens_at: string; closes_at: string }>) {
     const slot = slots.find((x) => x.weekday === row.weekday)
     if (slot) {
@@ -45,12 +63,37 @@ async function load() {
   }
 }
 
+async function load() {
+  const u = await http.get<{
+    services_description: string | null
+    business_mode: string
+    masters: MasterRow[]
+  }>('/user')
+  description.value = u.data.services_description || ''
+  businessMode.value = u.data.business_mode === 'salon' ? 'salon' : 'solo'
+  masters.value = u.data.masters ?? []
+  if (!masters.value.length) {
+    const m = await http.get<MasterRow[]>('/masters')
+    masters.value = m.data
+  }
+  if (selectedMasterId.value == null && masters.value[0]) {
+    selectedMasterId.value = masters.value[0].id
+  }
+  await loadMasterData()
+}
+
+watch(selectedMasterId, () => {
+  void loadMasterData()
+})
+
 async function saveDescription() {
   await http.patch('/profile', { services_description: description.value })
 }
 
 async function addService() {
+  if (selectedMasterId.value == null) return
   await http.post('/services', {
+    master_id: selectedMasterId.value,
     title: newSvc.title,
     description: newSvc.description || null,
     price_kopecks: Math.round(newSvc.price_rub * 100),
@@ -59,15 +102,16 @@ async function addService() {
   })
   newSvc.title = ''
   newSvc.description = ''
-  await load()
+  await loadMasterData()
 }
 
 async function removeService(id: number) {
   await http.delete(`/services/${id}`)
-  await load()
+  await loadMasterData()
 }
 
 async function saveHours() {
+  if (selectedMasterId.value == null) return
   const payload = slots
     .filter((s) => s.enabled)
     .map((s) => ({
@@ -75,7 +119,7 @@ async function saveHours() {
       opens_at: s.opens_at,
       closes_at: s.closes_at,
     }))
-  await http.put('/working-hours', { slots: payload })
+  await http.put('/working-hours', { master_id: selectedMasterId.value, slots: payload })
 }
 
 const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
@@ -89,6 +133,7 @@ onMounted(load)
 
     <section class="rounded-xl border border-white/10 bg-slate-900/40 p-6">
       <h3 class="font-medium text-white">Свободное описание услуг</h3>
+      <p class="mt-1 text-xs text-slate-500">Общее описание для бота и клиентов (для всего салона).</p>
       <textarea
         v-model="description"
         rows="6"
@@ -99,6 +144,26 @@ onMounted(load)
         Сохранить описание
       </button>
     </section>
+
+    <div v-if="showMasterTabs" class="flex flex-wrap gap-2 border-b border-white/10 pb-2">
+      <button
+        v-for="m in masters"
+        :key="m.id"
+        type="button"
+        class="rounded-lg px-4 py-2 text-sm transition"
+        :class="
+          selectedMasterId === m.id
+            ? 'bg-indigo-500 text-white'
+            : 'border border-white/15 text-slate-300 hover:bg-white/5'
+        "
+        @click="selectedMasterId = m.id"
+      >
+        {{ m.name }}
+      </button>
+    </div>
+    <p v-else-if="masters[0]" class="text-sm text-slate-400">
+      Мастер: <span class="text-white">{{ masters.find((m) => m.id === selectedMasterId)?.name ?? masters[0].name }}</span>
+    </p>
 
     <section class="rounded-xl border border-white/10 bg-slate-900/40 p-6">
       <h3 class="font-medium text-white">Услуги</h3>
@@ -152,17 +217,9 @@ onMounted(load)
             <input v-model="s.enabled" type="checkbox" class="rounded border-white/20" />
             {{ dayNames[s.weekday] }}
           </label>
-          <input
-            v-model="s.opens_at"
-            type="time"
-            class="rounded border border-white/10 bg-slate-950 px-2 py-1 text-white"
-          />
+          <input v-model="s.opens_at" type="time" class="rounded border border-white/10 bg-slate-950 px-2 py-1 text-white" />
           <span class="text-slate-500">—</span>
-          <input
-            v-model="s.closes_at"
-            type="time"
-            class="rounded border border-white/10 bg-slate-950 px-2 py-1 text-white"
-          />
+          <input v-model="s.closes_at" type="time" class="rounded border border-white/10 bg-slate-950 px-2 py-1 text-white" />
         </div>
       </div>
       <button type="button" class="mt-4 rounded-lg bg-indigo-500 px-4 py-2 text-sm text-white" @click="saveHours">

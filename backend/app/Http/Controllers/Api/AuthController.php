@@ -23,6 +23,7 @@ class AuthController extends Controller
         $trialEnd = now()->addDays($trialDays);
         $user = User::query()->create([
             'name' => $data['name'],
+            'business_mode' => 'solo',
             'email' => $data['email'],
             'password' => $data['password'],
             'sex' => $data['sex'] ?? null,

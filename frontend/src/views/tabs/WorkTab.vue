@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import http from '@/api/http'
+import axios from 'axios'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 
 type MasterRow = { id: number; name: string }
@@ -36,12 +37,22 @@ const newSvc = reactive({
 })
 
 const showMasterTabs = computed(() => businessMode.value === 'salon' && masters.value.length > 1)
+const hoursSaveMessage = ref<{ type: 'ok' | 'error'; text: string } | null>(null)
+
+function formatTimeForInput(value: string): string {
+  const match = String(value).match(/(\d{2}):(\d{2})/)
+  return match ? `${match[1]}:${match[2]}` : '10:00'
+}
+
+function formatTimeForApi(value: string): string {
+  return formatTimeForInput(value)
+}
 
 function resetSlotsDefaults() {
   for (const slot of slots) {
     slot.opens_at = '10:00'
     slot.closes_at = '19:00'
-    slot.enabled = slot.weekday >= 1 && slot.weekday <= 5
+    slot.enabled = false
   }
 }
 
@@ -54,10 +65,11 @@ async function loadMasterData() {
   services.value = s.data
   resetSlotsDefaults()
   for (const row of wh.data as Array<{ weekday: number; opens_at: string; closes_at: string }>) {
-    const slot = slots.find((x) => x.weekday === row.weekday)
+    const weekday = Number(row.weekday)
+    const slot = slots.find((x) => x.weekday === weekday)
     if (slot) {
-      slot.opens_at = String(row.opens_at).slice(0, 5)
-      slot.closes_at = String(row.closes_at).slice(0, 5)
+      slot.opens_at = formatTimeForInput(row.opens_at)
+      slot.closes_at = formatTimeForInput(row.closes_at)
       slot.enabled = true
     }
   }
@@ -111,15 +123,34 @@ async function removeService(id: number) {
 }
 
 async function saveHours() {
-  if (selectedMasterId.value == null) return
+  hoursSaveMessage.value = null
+  if (selectedMasterId.value == null) {
+    hoursSaveMessage.value = { type: 'error', text: 'Мастер не выбран.' }
+    return
+  }
   const payload = slots
     .filter((s) => s.enabled)
     .map((s) => ({
       weekday: s.weekday,
-      opens_at: s.opens_at,
-      closes_at: s.closes_at,
+      opens_at: formatTimeForApi(s.opens_at),
+      closes_at: formatTimeForApi(s.closes_at),
     }))
-  await http.put('/working-hours', { master_id: selectedMasterId.value, slots: payload })
+  try {
+    await http.put('/working-hours', { master_id: selectedMasterId.value, slots: payload })
+    await loadMasterData()
+    hoursSaveMessage.value = { type: 'ok', text: 'График сохранён.' }
+  } catch (e) {
+    if (axios.isAxiosError(e) && e.response?.status === 422) {
+      const body = e.response.data as { errors?: Record<string, string[]>; message?: string }
+      const flat = body.errors ? Object.values(body.errors).flat().join(' ') : ''
+      hoursSaveMessage.value = {
+        type: 'error',
+        text: flat || body.message || 'Не удалось сохранить график.',
+      }
+    } else {
+      hoursSaveMessage.value = { type: 'error', text: 'Не удалось сохранить график.' }
+    }
+  }
 }
 
 const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
@@ -225,6 +256,14 @@ onMounted(load)
       <button type="button" class="mt-4 rounded-lg bg-indigo-500 px-4 py-2 text-sm text-white" @click="saveHours">
         Сохранить график
       </button>
+      <p
+        v-if="hoursSaveMessage"
+        role="status"
+        class="mt-2 text-sm"
+        :class="hoursSaveMessage.type === 'ok' ? 'text-emerald-400' : 'text-rose-400'"
+      >
+        {{ hoursSaveMessage.text }}
+      </p>
     </section>
   </div>
 </template>

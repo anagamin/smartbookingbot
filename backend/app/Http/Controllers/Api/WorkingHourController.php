@@ -19,11 +19,7 @@ class WorkingHourController extends Controller
         $masterId = (int) $request->query('master_id');
         $this->authorizeMaster($request, $masterId);
 
-        return WorkingHour::query()
-            ->where('master_id', $masterId)
-            ->orderBy('weekday')
-            ->orderBy('opens_at')
-            ->get();
+        return $this->hoursForMaster($request->user()->id, $masterId);
     }
 
     public function sync(Request $request)
@@ -32,8 +28,8 @@ class WorkingHourController extends Controller
             'master_id' => ['required', 'integer'],
             'slots' => ['required', 'array'],
             'slots.*.weekday' => ['required', 'integer', 'min:0', 'max:6'],
-            'slots.*.opens_at' => ['required', 'date_format:H:i'],
-            'slots.*.closes_at' => ['required', 'date_format:H:i'],
+            'slots.*.opens_at' => ['required', 'date_format:H:i,H:i:s'],
+            'slots.*.closes_at' => ['required', 'date_format:H:i,H:i:s'],
         ]);
 
         $masterId = (int) $data['master_id'];
@@ -47,16 +43,37 @@ class WorkingHourController extends Controller
                     'user_id' => $userId,
                     'master_id' => $masterId,
                     'weekday' => $slot['weekday'],
-                    'opens_at' => $slot['opens_at'].':00',
-                    'closes_at' => $slot['closes_at'].':00',
+                    'opens_at' => $this->toStorageTime($slot['opens_at']),
+                    'closes_at' => $this->toStorageTime($slot['closes_at']),
                 ]);
             }
         });
 
-        return WorkingHour::query()
+        return $this->hoursForMaster($userId, $masterId);
+    }
+
+    private function hoursForMaster(int $userId, int $masterId)
+    {
+        $hours = WorkingHour::query()
             ->where('master_id', $masterId)
             ->orderBy('weekday')
+            ->orderBy('opens_at')
             ->get();
+        if ($hours->isNotEmpty()) {
+            return $hours;
+        }
+
+        return WorkingHour::query()
+            ->where('user_id', $userId)
+            ->whereNull('master_id')
+            ->orderBy('weekday')
+            ->orderBy('opens_at')
+            ->get();
+    }
+
+    private function toStorageTime(string $value): string
+    {
+        return strlen($value) === 5 ? $value.':00' : $value;
     }
 
     private function authorizeMaster(Request $request, int $masterId): void

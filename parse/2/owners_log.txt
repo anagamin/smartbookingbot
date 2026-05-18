@@ -1,0 +1,950 @@
+[2026-05-17 11:30:03] Processing group: 152314417 -> 152314417
+[2026-05-17 11:30:03] Managers error for 152314417: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:03] Contacts error for 152314417: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:04] Processing group: 110960373 -> 110960373
+[2026-05-17 11:30:04] Managers error for 110960373: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:05] Contacts error for 110960373: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:05] Processing group: 129982978 -> 129982978
+[2026-05-17 11:30:05] Managers error for 129982978: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:06] Contacts error for 129982978: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:06] Processing group: 104069586 -> 104069586
+[2026-05-17 11:30:06] Managers error for 104069586: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:06] Contacts error for 104069586: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:07] Processing group: 170091876 -> 170091876
+[2026-05-17 11:30:07] Managers error for 170091876: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:07] Contacts error for 170091876: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:08] Processing group: 183041855 -> 183041855
+[2026-05-17 11:30:08] Managers error for 183041855: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:08] Contacts error for 183041855: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:09] Processing group: 6781612 -> 6781612
+[2026-05-17 11:30:09] Managers error for 6781612: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:09] Contacts error for 6781612: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:10] Processing group: 80823429 -> 80823429
+[2026-05-17 11:30:10] Managers error for 80823429: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:10] Contacts error for 80823429: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:11] Processing group: 154569468 -> 154569468
+[2026-05-17 11:30:11] Managers error for 154569468: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:11] Contacts error for 154569468: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:12] Processing group: 117704448 -> 117704448
+[2026-05-17 11:30:12] Managers error for 117704448: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:12] Contacts error for 117704448: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:13] Processing group: 183323547 -> 183323547
+[2026-05-17 11:30:13] Managers error for 183323547: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:13] Contacts error for 183323547: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:14] Processing group: 126699751 -> 126699751
+[2026-05-17 11:30:14] Managers error for 126699751: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:14] Contacts error for 126699751: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:15] Processing group: 179693440 -> 179693440
+[2026-05-17 11:30:15] Managers error for 179693440: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:15] Contacts error for 179693440: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:16] Processing group: 24482611 -> 24482611
+[2026-05-17 11:30:16] Managers error for 24482611: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:16] Contacts error for 24482611: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:17] Processing group: 179692376 -> 179692376
+[2026-05-17 11:30:17] Managers error for 179692376: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:17] Contacts error for 179692376: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:18] Processing group: 180296442 -> 180296442
+[2026-05-17 11:30:18] Managers error for 180296442: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:18] Contacts error for 180296442: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:19] Processing group: 137766986 -> 137766986
+[2026-05-17 11:30:19] Managers error for 137766986: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:19] Contacts error for 137766986: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:20] Processing group: 34496383 -> 34496383
+[2026-05-17 11:30:20] Managers error for 34496383: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:20] Contacts error for 34496383: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:21] Processing group: 156125592 -> 156125592
+[2026-05-17 11:30:21] Managers error for 156125592: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:21] Contacts error for 156125592: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:30:22] Processing group: 105771342 -> 105771342
+[2026-05-17 11:30:22] Managers error for 105771342: Curl error: SSL certificate problem: self-signed certificate in certificate chain
+[2026-05-17 11:31:37] Processing group: 152314417 -> 152314417
+[2026-05-17 11:31:37] Managers error for 152314417: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:31:38] Contacts found: 1
+[2026-05-17 11:31:38] Processing group: 110960373 -> 110960373
+[2026-05-17 11:31:39] Managers error for 110960373: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:31:39] Contacts found: 2
+[2026-05-17 11:31:40] Processing group: 129982978 -> 129982978
+[2026-05-17 11:31:40] Managers error for 129982978: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:31:40] Contacts found: 1
+[2026-05-17 11:31:41] Processing group: 104069586 -> 104069586
+[2026-05-17 11:31:41] Managers error for 104069586: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:31:42] Contacts found: 1
+[2026-05-17 11:31:42] Processing group: 170091876 -> 170091876
+[2026-05-17 11:31:42] Managers error for 170091876: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:31:43] Contacts found: 1
+[2026-05-17 11:31:43] Processing group: 183041855 -> 183041855
+[2026-05-17 11:31:43] Managers error for 183041855: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:31:44] Contacts found: 1
+[2026-05-17 11:31:44] Processing group: 6781612 -> 6781612
+[2026-05-17 11:31:45] Managers error for 6781612: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:31:45] Contacts found: 1
+[2026-05-17 11:31:46] Processing group: 80823429 -> 80823429
+[2026-05-17 11:31:46] Managers error for 80823429: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:31:47] Contacts found: 1
+[2026-05-17 11:31:47] Processing group: 154569468 -> 154569468
+[2026-05-17 11:31:47] Managers error for 154569468: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:31:48] Contacts found: 1
+[2026-05-17 11:31:48] Processing group: 117704448 -> 117704448
+[2026-05-17 11:31:48] Managers error for 117704448: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:31:49] Contacts found: 1
+[2026-05-17 11:31:49] Processing group: 183323547 -> 183323547
+[2026-05-17 11:31:50] Managers error for 183323547: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:31:50] Contacts found: 2
+[2026-05-17 11:31:50] Processing group: 126699751 -> 126699751
+[2026-05-17 11:31:51] Managers error for 126699751: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:31:51] No contacts found
+[2026-05-17 11:31:52] Processing group: 179693440 -> 179693440
+[2026-05-17 11:31:52] Managers error for 179693440: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:31:53] No contacts found
+[2026-05-17 11:31:53] Processing group: 24482611 -> 24482611
+[2026-05-17 11:31:53] Managers error for 24482611: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:31:54] Contacts found: 1
+[2026-05-17 11:31:54] Processing group: 179692376 -> 179692376
+[2026-05-17 11:31:54] Managers error for 179692376: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:31:55] Contacts found: 1
+[2026-05-17 11:31:55] Processing group: 180296442 -> 180296442
+[2026-05-17 11:31:56] Managers error for 180296442: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:31:56] Contacts found: 1
+[2026-05-17 11:31:57] Processing group: 137766986 -> 137766986
+[2026-05-17 11:31:57] Managers error for 137766986: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:31:57] Contacts found: 1
+[2026-05-17 11:31:58] Processing group: 34496383 -> 34496383
+[2026-05-17 11:31:58] Managers error for 34496383: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:31:59] Contacts found: 1
+[2026-05-17 11:31:59] Processing group: 156125592 -> 156125592
+[2026-05-17 11:31:59] Managers error for 156125592: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:00] Contacts found: 1
+[2026-05-17 11:32:00] Processing group: 105771342 -> 105771342
+[2026-05-17 11:32:01] Managers error for 105771342: VK error 15: Access denied: group hide members
+[2026-05-17 11:32:01] Contacts found: 1
+[2026-05-17 11:32:02] Processing group: 74445883 -> 74445883
+[2026-05-17 11:32:02] Managers error for 74445883: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:03] Contacts found: 1
+[2026-05-17 11:32:03] Processing group: 179225391 -> 179225391
+[2026-05-17 11:32:03] Managers error for 179225391: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:04] Contacts found: 1
+[2026-05-17 11:32:04] Processing group: 83428203 -> 83428203
+[2026-05-17 11:32:04] Managers error for 83428203: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:05] Contacts found: 3
+[2026-05-17 11:32:05] Processing group: 89035016 -> 89035016
+[2026-05-17 11:32:06] Managers error for 89035016: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:06] Contacts found: 1
+[2026-05-17 11:32:06] Processing group: 121986418 -> 121986418
+[2026-05-17 11:32:07] Managers error for 121986418: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:07] Contacts found: 1
+[2026-05-17 11:32:08] Processing group: 163989616 -> 163989616
+[2026-05-17 11:32:08] Managers error for 163989616: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:09] No contacts found
+[2026-05-17 11:32:09] Processing group: 65492037 -> 65492037
+[2026-05-17 11:32:09] Managers error for 65492037: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:10] Contacts found: 1
+[2026-05-17 11:32:10] Processing group: 176387530 -> 176387530
+[2026-05-17 11:32:10] Managers error for 176387530: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:11] Contacts found: 1
+[2026-05-17 11:32:12] Processing group: 35562364 -> 35562364
+[2026-05-17 11:32:12] Managers error for 35562364: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:12] Contacts found: 1
+[2026-05-17 11:32:13] Processing group: 35567777 -> 35567777
+[2026-05-17 11:32:13] Managers error for 35567777: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:13] Contacts found: 1
+[2026-05-17 11:32:14] Processing group: 5541777 -> 5541777
+[2026-05-17 11:32:14] Managers error for 5541777: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:15] Contacts found: 1
+[2026-05-17 11:32:15] Processing group: 75334845 -> 75334845
+[2026-05-17 11:32:15] Managers error for 75334845: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:16] Contacts found: 1
+[2026-05-17 11:32:16] Processing group: 122413609 -> 122413609
+[2026-05-17 11:32:16] Managers error for 122413609: VK error 15: Access denied: group hide members
+[2026-05-17 11:32:17] Contacts found: 1
+[2026-05-17 11:32:17] Processing group: 49607147 -> 49607147
+[2026-05-17 11:32:18] Managers error for 49607147: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:18] Contacts found: 1
+[2026-05-17 11:32:19] Processing group: 161902545 -> 161902545
+[2026-05-17 11:32:19] Managers error for 161902545: VK error 15: Access denied: group hide members
+[2026-05-17 11:32:19] No contacts found
+[2026-05-17 11:32:20] Processing group: 111663646 -> 111663646
+[2026-05-17 11:32:20] Managers error for 111663646: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:21] Contacts found: 1
+[2026-05-17 11:32:21] Processing group: 36041496 -> 36041496
+[2026-05-17 11:32:22] Managers error for 36041496: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:22] No contacts found
+[2026-05-17 11:32:23] Processing group: 38270572 -> 38270572
+[2026-05-17 11:32:23] Managers error for 38270572: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:23] Contacts found: 2
+[2026-05-17 11:32:24] Processing group: 36260778 -> 36260778
+[2026-05-17 11:32:24] Managers error for 36260778: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:25] Contacts found: 2
+[2026-05-17 11:32:25] Processing group: 42833918 -> 42833918
+[2026-05-17 11:32:25] Managers error for 42833918: VK error 15: Access denied: group hide members
+[2026-05-17 11:32:26] Contacts found: 1
+[2026-05-17 11:32:26] Processing group: 74380983 -> 74380983
+[2026-05-17 11:32:26] Managers error for 74380983: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:27] No contacts found
+[2026-05-17 11:32:27] Processing group: 123994848 -> 123994848
+[2026-05-17 11:32:39] Managers error for 123994848: Curl error: Could not resolve host: api.vk.com
+[2026-05-17 11:32:40] Contacts found: 1
+[2026-05-17 11:32:40] Processing group: 141992438 -> 141992438
+[2026-05-17 11:32:41] Managers error for 141992438: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:41] Contacts found: 1
+[2026-05-17 11:32:42] Processing group: 161894462 -> 161894462
+[2026-05-17 11:32:42] Managers error for 161894462: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:42] Contacts found: 1
+[2026-05-17 11:32:43] Processing group: 31525745 -> 31525745
+[2026-05-17 11:32:43] Managers error for 31525745: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:43] No contacts found
+[2026-05-17 11:32:44] Processing group: 167340389 -> 167340389
+[2026-05-17 11:32:45] Managers error for 167340389: VK error 15: Access denied: group hide members
+[2026-05-17 11:32:46] Contacts found: 2
+[2026-05-17 11:32:46] Processing group: 25410427 -> 25410427
+[2026-05-17 11:32:46] Managers error for 25410427: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:47] Contacts found: 1
+[2026-05-17 11:32:47] Processing group: 118200240 -> 118200240
+[2026-05-17 11:32:47] Managers error for 118200240: VK error 15: Access denied: group hide members
+[2026-05-17 11:32:48] Contacts found: 1
+[2026-05-17 11:32:48] Processing group: 42830689 -> 42830689
+[2026-05-17 11:32:49] Managers error for 42830689: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:49] No contacts found
+[2026-05-17 11:32:50] Processing group: 31162140 -> 31162140
+[2026-05-17 11:32:51] Managers error for 31162140: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:52] Contacts found: 1
+[2026-05-17 11:32:52] Processing group: 187343452 -> 187343452
+[2026-05-17 11:32:52] Managers error for 187343452: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:53] Contacts found: 1
+[2026-05-17 11:32:53] Processing group: 124650480 -> 124650480
+[2026-05-17 11:32:53] Managers error for 124650480: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:32:54] Contacts found: 1
+[2026-05-17 11:32:54] Processing group: 20960840 -> 20960840
+[2026-05-17 11:32:55] Managers error for 20960840: VK error 15: Access denied: group hide members
+[2026-05-17 11:32:55] Contacts found: 2
+[2026-05-17 11:32:56] Processing group: 103034597 -> 103034597
+[2026-05-17 11:32:56] Managers error for 103034597: VK error 15: Access denied: group hide members
+[2026-05-17 11:39:25] Processing group: 152314417 -> 152314417
+[2026-05-17 11:39:25] Managers error for 152314417: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:26] Contacts found: 1
+[2026-05-17 11:39:26] Processing group: 110960373 -> 110960373
+[2026-05-17 11:39:26] Managers error for 110960373: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:27] Contacts found: 2
+[2026-05-17 11:39:27] Processing group: 129982978 -> 129982978
+[2026-05-17 11:39:27] Managers error for 129982978: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:28] Contacts found: 1
+[2026-05-17 11:39:28] Processing group: 104069586 -> 104069586
+[2026-05-17 11:39:28] Managers error for 104069586: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:29] Contacts found: 1
+[2026-05-17 11:39:29] Processing group: 170091876 -> 170091876
+[2026-05-17 11:39:29] Managers error for 170091876: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:30] Contacts found: 1
+[2026-05-17 11:39:30] Processing group: 183041855 -> 183041855
+[2026-05-17 11:39:31] Managers error for 183041855: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:31] Contacts found: 1
+[2026-05-17 11:39:32] Processing group: 6781612 -> 6781612
+[2026-05-17 11:39:32] Managers error for 6781612: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:32] Contacts found: 1
+[2026-05-17 11:39:33] Processing group: 80823429 -> 80823429
+[2026-05-17 11:39:33] Managers error for 80823429: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:34] Contacts found: 1
+[2026-05-17 11:39:34] Processing group: 154569468 -> 154569468
+[2026-05-17 11:39:34] Managers error for 154569468: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:35] Contacts found: 1
+[2026-05-17 11:39:35] Processing group: 117704448 -> 117704448
+[2026-05-17 11:39:36] Managers error for 117704448: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:36] Contacts found: 1
+[2026-05-17 11:39:37] Processing group: 183323547 -> 183323547
+[2026-05-17 11:39:37] Managers error for 183323547: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:37] Contacts found: 2
+[2026-05-17 11:39:38] Processing group: 126699751 -> 126699751
+[2026-05-17 11:39:38] Managers error for 126699751: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:38] No contacts found
+[2026-05-17 11:39:39] Processing group: 179693440 -> 179693440
+[2026-05-17 11:39:39] Managers error for 179693440: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:40] No contacts found
+[2026-05-17 11:39:40] Processing group: 24482611 -> 24482611
+[2026-05-17 11:39:40] Managers error for 24482611: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:41] Contacts found: 1
+[2026-05-17 11:39:41] Processing group: 179692376 -> 179692376
+[2026-05-17 11:39:42] Managers error for 179692376: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:42] Contacts found: 1
+[2026-05-17 11:39:43] Processing group: 180296442 -> 180296442
+[2026-05-17 11:39:43] Managers error for 180296442: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:44] Contacts found: 1
+[2026-05-17 11:39:44] Processing group: 137766986 -> 137766986
+[2026-05-17 11:39:44] Managers error for 137766986: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:45] Contacts found: 1
+[2026-05-17 11:39:45] Processing group: 34496383 -> 34496383
+[2026-05-17 11:39:45] Managers error for 34496383: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:46] Contacts found: 1
+[2026-05-17 11:39:46] Processing group: 156125592 -> 156125592
+[2026-05-17 11:39:47] Managers error for 156125592: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:48] Contacts found: 1
+[2026-05-17 11:39:49] Processing group: 105771342 -> 105771342
+[2026-05-17 11:39:49] Managers error for 105771342: VK error 15: Access denied: group hide members
+[2026-05-17 11:39:49] Contacts found: 1
+[2026-05-17 11:39:50] Processing group: 74445883 -> 74445883
+[2026-05-17 11:39:50] Managers error for 74445883: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:51] Contacts found: 1
+[2026-05-17 11:39:51] Processing group: 179225391 -> 179225391
+[2026-05-17 11:39:51] Managers error for 179225391: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:52] Contacts found: 1
+[2026-05-17 11:39:53] Processing group: 83428203 -> 83428203
+[2026-05-17 11:39:53] Managers error for 83428203: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:53] Contacts found: 3
+[2026-05-17 11:39:54] Processing group: 89035016 -> 89035016
+[2026-05-17 11:39:54] Managers error for 89035016: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:55] Contacts found: 1
+[2026-05-17 11:39:55] Processing group: 121986418 -> 121986418
+[2026-05-17 11:39:55] Managers error for 121986418: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:56] Contacts found: 1
+[2026-05-17 11:39:56] Processing group: 163989616 -> 163989616
+[2026-05-17 11:39:56] Managers error for 163989616: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:57] No contacts found
+[2026-05-17 11:39:57] Processing group: 65492037 -> 65492037
+[2026-05-17 11:39:57] Managers error for 65492037: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:58] Contacts found: 1
+[2026-05-17 11:39:58] Processing group: 176387530 -> 176387530
+[2026-05-17 11:39:59] Managers error for 176387530: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:39:59] Contacts found: 1
+[2026-05-17 11:40:00] Processing group: 35562364 -> 35562364
+[2026-05-17 11:40:00] Managers error for 35562364: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:00] Contacts found: 1
+[2026-05-17 11:40:01] Processing group: 35567777 -> 35567777
+[2026-05-17 11:40:01] Managers error for 35567777: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:02] Contacts found: 1
+[2026-05-17 11:40:02] Processing group: 5541777 -> 5541777
+[2026-05-17 11:40:03] Managers error for 5541777: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:03] Contacts found: 1
+[2026-05-17 11:40:04] Processing group: 75334845 -> 75334845
+[2026-05-17 11:40:04] Managers error for 75334845: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:04] Contacts found: 1
+[2026-05-17 11:40:05] Processing group: 122413609 -> 122413609
+[2026-05-17 11:40:05] Managers error for 122413609: VK error 15: Access denied: group hide members
+[2026-05-17 11:40:06] Contacts found: 1
+[2026-05-17 11:40:06] Processing group: 49607147 -> 49607147
+[2026-05-17 11:40:06] Managers error for 49607147: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:07] Contacts found: 1
+[2026-05-17 11:40:07] Processing group: 161902545 -> 161902545
+[2026-05-17 11:40:07] Managers error for 161902545: VK error 15: Access denied: group hide members
+[2026-05-17 11:40:08] No contacts found
+[2026-05-17 11:40:08] Processing group: 111663646 -> 111663646
+[2026-05-17 11:40:08] Managers error for 111663646: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:09] Contacts found: 1
+[2026-05-17 11:40:09] Processing group: 36041496 -> 36041496
+[2026-05-17 11:40:10] Managers error for 36041496: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:10] No contacts found
+[2026-05-17 11:40:11] Processing group: 38270572 -> 38270572
+[2026-05-17 11:40:11] Managers error for 38270572: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:11] Contacts found: 2
+[2026-05-17 11:40:12] Processing group: 36260778 -> 36260778
+[2026-05-17 11:40:12] Managers error for 36260778: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:13] Contacts found: 2
+[2026-05-17 11:40:13] Processing group: 42833918 -> 42833918
+[2026-05-17 11:40:13] Managers error for 42833918: VK error 15: Access denied: group hide members
+[2026-05-17 11:40:14] Contacts found: 1
+[2026-05-17 11:40:14] Processing group: 74380983 -> 74380983
+[2026-05-17 11:40:15] Managers error for 74380983: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:15] No contacts found
+[2026-05-17 11:40:16] Processing group: 123994848 -> 123994848
+[2026-05-17 11:40:16] Managers error for 123994848: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:17] Contacts found: 1
+[2026-05-17 11:40:18] Processing group: 141992438 -> 141992438
+[2026-05-17 11:40:18] Managers error for 141992438: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:19] Contacts found: 1
+[2026-05-17 11:40:19] Processing group: 161894462 -> 161894462
+[2026-05-17 11:40:20] Managers error for 161894462: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:20] Contacts found: 1
+[2026-05-17 11:40:21] Processing group: 31525745 -> 31525745
+[2026-05-17 11:40:21] Managers error for 31525745: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:21] No contacts found
+[2026-05-17 11:40:22] Processing group: 167340389 -> 167340389
+[2026-05-17 11:40:22] Managers error for 167340389: VK error 15: Access denied: group hide members
+[2026-05-17 11:40:22] Contacts found: 2
+[2026-05-17 11:40:23] Processing group: 25410427 -> 25410427
+[2026-05-17 11:40:23] Managers error for 25410427: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:24] Contacts found: 1
+[2026-05-17 11:40:24] Processing group: 118200240 -> 118200240
+[2026-05-17 11:40:24] Managers error for 118200240: VK error 15: Access denied: group hide members
+[2026-05-17 11:40:25] Contacts found: 1
+[2026-05-17 11:40:25] Processing group: 42830689 -> 42830689
+[2026-05-17 11:40:25] Managers error for 42830689: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:26] No contacts found
+[2026-05-17 11:40:27] Processing group: 31162140 -> 31162140
+[2026-05-17 11:40:27] Managers error for 31162140: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:27] Contacts found: 1
+[2026-05-17 11:40:28] Processing group: 187343452 -> 187343452
+[2026-05-17 11:40:28] Managers error for 187343452: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:28] Contacts found: 1
+[2026-05-17 11:40:29] Processing group: 124650480 -> 124650480
+[2026-05-17 11:40:29] Managers error for 124650480: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:30] Contacts found: 1
+[2026-05-17 11:40:30] Processing group: 20960840 -> 20960840
+[2026-05-17 11:40:30] Managers error for 20960840: VK error 15: Access denied: group hide members
+[2026-05-17 11:40:31] Contacts found: 2
+[2026-05-17 11:40:31] Processing group: 103034597 -> 103034597
+[2026-05-17 11:40:31] Managers error for 103034597: VK error 15: Access denied: group hide members
+[2026-05-17 11:40:32] Contacts found: 1
+[2026-05-17 11:40:32] Processing group: 116557663 -> 116557663
+[2026-05-17 11:40:33] Managers error for 116557663: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:33] Contacts found: 1
+[2026-05-17 11:40:34] Processing group: 70341456 -> 70341456
+[2026-05-17 11:40:34] Managers error for 70341456: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:34] No contacts found
+[2026-05-17 11:40:35] Processing group: 166875436 -> 166875436
+[2026-05-17 11:40:35] Managers error for 166875436: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:35] Contacts found: 1
+[2026-05-17 11:40:36] Processing group: 172461482 -> 172461482
+[2026-05-17 11:40:36] Managers error for 172461482: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:37] Contacts found: 1
+[2026-05-17 11:40:37] Processing group: 21266492 -> 21266492
+[2026-05-17 11:40:37] Managers error for 21266492: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:38] Contacts found: 1
+[2026-05-17 11:40:38] Processing group: 14551620 -> 14551620
+[2026-05-17 11:40:38] Managers error for 14551620: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:39] Contacts found: 1
+[2026-05-17 11:40:39] Processing group: 67790908 -> 67790908
+[2026-05-17 11:40:39] Managers error for 67790908: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:40] Contacts found: 1
+[2026-05-17 11:40:40] Processing group: 75143661 -> 75143661
+[2026-05-17 11:40:41] Managers error for 75143661: VK error 15: Access denied: group hide members
+[2026-05-17 11:40:41] No contacts found
+[2026-05-17 11:40:41] Processing group: 19187015 -> 19187015
+[2026-05-17 11:40:42] Managers error for 19187015: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:42] Contacts found: 1
+[2026-05-17 11:40:43] Processing group: 63096304 -> 63096304
+[2026-05-17 11:40:43] Managers error for 63096304: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:43] Contacts found: 2
+[2026-05-17 11:40:44] Processing group: 76665725 -> 76665725
+[2026-05-17 11:40:44] Managers error for 76665725: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:44] Contacts found: 1
+[2026-05-17 11:40:45] Processing group: 163908158 -> 163908158
+[2026-05-17 11:40:45] Managers error for 163908158: VK error 15: Access denied: group hide members
+[2026-05-17 11:40:46] Contacts found: 1
+[2026-05-17 11:40:46] Processing group: 192610209 -> 192610209
+[2026-05-17 11:40:46] Managers error for 192610209: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:47] No contacts found
+[2026-05-17 11:40:47] Processing group: 127968038 -> 127968038
+[2026-05-17 11:40:47] Managers error for 127968038: VK error 15: Access denied: group hide members
+[2026-05-17 11:40:48] No contacts found
+[2026-05-17 11:40:48] Processing group: 60215296 -> 60215296
+[2026-05-17 11:40:48] Managers error for 60215296: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:49] Contacts found: 1
+[2026-05-17 11:40:49] Processing group: 164182406 -> 164182406
+[2026-05-17 11:40:49] Managers error for 164182406: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:50] Contacts found: 1
+[2026-05-17 11:40:50] Processing group: 167338444 -> 167338444
+[2026-05-17 11:40:50] Managers error for 167338444: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:51] No contacts found
+[2026-05-17 11:40:51] Processing group: 102332474 -> 102332474
+[2026-05-17 11:40:52] Managers error for 102332474: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:52] Contacts found: 2
+[2026-05-17 11:40:53] Processing group: 20556693 -> 20556693
+[2026-05-17 11:40:53] Managers error for 20556693: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:53] Contacts found: 1
+[2026-05-17 11:40:54] Processing group: 94588778 -> 94588778
+[2026-05-17 11:40:54] Managers error for 94588778: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:55] Contacts found: 1
+[2026-05-17 11:40:55] Processing group: 172999592 -> 172999592
+[2026-05-17 11:40:55] Managers error for 172999592: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:56] Contacts found: 1
+[2026-05-17 11:40:56] Processing group: 32355856 -> 32355856
+[2026-05-17 11:40:56] Managers error for 32355856: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:57] Contacts found: 1
+[2026-05-17 11:40:57] Processing group: 92981490 -> 92981490
+[2026-05-17 11:40:58] Managers error for 92981490: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:40:58] Contacts found: 1
+[2026-05-17 11:40:59] Processing group: 92988922 -> 92988922
+[2026-05-17 11:40:59] Managers error for 92988922: VK error 15: Access denied: group hide members
+[2026-05-17 11:40:59] Contacts found: 2
+[2026-05-17 11:41:00] Processing group: 104096080 -> 104096080
+[2026-05-17 11:41:00] Managers error for 104096080: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:01] Contacts found: 1
+[2026-05-17 11:41:01] Processing group: 103567128 -> 103567128
+[2026-05-17 11:41:01] Managers error for 103567128: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:02] No contacts found
+[2026-05-17 11:41:02] Processing group: 78077885 -> 78077885
+[2026-05-17 11:41:02] Managers error for 78077885: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:03] Contacts found: 1
+[2026-05-17 11:41:03] Processing group: 78078671 -> 78078671
+[2026-05-17 11:41:04] Managers error for 78078671: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:04] Contacts found: 1
+[2026-05-17 11:41:05] Processing group: 67482777 -> 67482777
+[2026-05-17 11:41:05] Managers error for 67482777: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:06] No contacts found
+[2026-05-17 11:41:07] Processing group: 65389386 -> 65389386
+[2026-05-17 11:41:07] Managers error for 65389386: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:09] Contacts found: 3
+[2026-05-17 11:41:09] Processing group: 167146992 -> 167146992
+[2026-05-17 11:41:09] Managers error for 167146992: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:10] No contacts found
+[2026-05-17 11:41:10] Processing group: 125835241 -> 125835241
+[2026-05-17 11:41:10] Managers error for 125835241: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:11] Contacts found: 3
+[2026-05-17 11:41:11] Processing group: 37750828 -> 37750828
+[2026-05-17 11:41:12] Managers error for 37750828: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:14] Contacts found: 1
+[2026-05-17 11:41:14] Processing group: 55647241 -> 55647241
+[2026-05-17 11:41:15] Managers error for 55647241: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:16] Contacts found: 1
+[2026-05-17 11:41:16] Processing group: 143905868 -> 143905868
+[2026-05-17 11:41:17] Managers error for 143905868: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:20] Contacts found: 1
+[2026-05-17 11:41:21] Processing group: 52880609 -> 52880609
+[2026-05-17 11:41:21] Managers error for 52880609: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:23] Contacts found: 2
+[2026-05-17 11:41:23] Processing group: 45556757 -> 45556757
+[2026-05-17 11:41:23] Managers error for 45556757: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:24] No contacts found
+[2026-05-17 11:41:25] Processing group: 84248875 -> 84248875
+[2026-05-17 11:41:26] Managers error for 84248875: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:27] Contacts found: 2
+[2026-05-17 11:41:27] Processing group: 67016227 -> 67016227
+[2026-05-17 11:41:28] Managers error for 67016227: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:28] Contacts found: 1
+[2026-05-17 11:41:29] Processing group: 67016596 -> 67016596
+[2026-05-17 11:41:29] Managers error for 67016596: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:30] Contacts found: 1
+[2026-05-17 11:41:30] Processing group: 64156106 -> 64156106
+[2026-05-17 11:41:30] Managers error for 64156106: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:31] Contacts found: 1
+[2026-05-17 11:41:31] Processing group: 104395407 -> 104395407
+[2026-05-17 11:41:31] Managers error for 104395407: VK error 15: Access denied: group hide members
+[2026-05-17 11:41:32] Contacts found: 1
+[2026-05-17 11:41:32] Processing group: 41418655 -> 41418655
+[2026-05-17 11:41:32] Managers error for 41418655: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:33] Contacts found: 1
+[2026-05-17 11:41:33] Processing group: 160296694 -> 160296694
+[2026-05-17 11:41:34] Managers error for 160296694: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:34] Contacts found: 1
+[2026-05-17 11:41:35] Processing group: 157511419 -> 157511419
+[2026-05-17 11:41:35] Managers error for 157511419: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:35] Contacts found: 2
+[2026-05-17 11:41:36] Processing group: 153867160 -> 153867160
+[2026-05-17 11:41:36] Managers error for 153867160: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:37] Contacts found: 1
+[2026-05-17 11:41:38] Processing group: 7009615 -> 7009615
+[2026-05-17 11:41:38] Managers error for 7009615: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:39] Contacts found: 3
+[2026-05-17 11:41:39] Processing group: 48040283 -> 48040283
+[2026-05-17 11:41:40] Managers error for 48040283: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:40] Contacts found: 2
+[2026-05-17 11:41:40] Processing group: 141102918 -> 141102918
+[2026-05-17 11:41:41] Managers error for 141102918: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:41] Contacts found: 2
+[2026-05-17 11:41:42] Processing group: 185532114 -> 185532114
+[2026-05-17 11:41:42] Managers error for 185532114: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:43] Contacts found: 1
+[2026-05-17 11:41:43] Processing group: 114690162 -> 114690162
+[2026-05-17 11:41:43] Managers error for 114690162: VK error 15: Access denied: group hide members
+[2026-05-17 11:41:44] Contacts found: 1
+[2026-05-17 11:41:44] Processing group: 119185693 -> 119185693
+[2026-05-17 11:41:44] Managers error for 119185693: VK error 15: Access denied: group hide members
+[2026-05-17 11:41:45] Contacts found: 1
+[2026-05-17 11:41:45] Processing group: 75531273 -> 75531273
+[2026-05-17 11:41:46] Managers error for 75531273: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:46] Contacts found: 1
+[2026-05-17 11:41:47] Processing group: 70325689 -> 70325689
+[2026-05-17 11:41:47] Managers error for 70325689: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:48] Contacts found: 1
+[2026-05-17 11:41:48] Processing group: 164763341 -> 164763341
+[2026-05-17 11:41:48] Managers error for 164763341: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:49] Contacts found: 1
+[2026-05-17 11:41:49] Processing group: 15908281 -> 15908281
+[2026-05-17 11:41:50] Managers error for 15908281: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:50] Contacts found: 1
+[2026-05-17 11:41:50] Processing group: 184890453 -> 184890453
+[2026-05-17 11:41:51] Managers error for 184890453: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:51] Contacts found: 1
+[2026-05-17 11:41:52] Processing group: 160880029 -> 160880029
+[2026-05-17 11:41:52] Managers error for 160880029: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:53] Contacts found: 1
+[2026-05-17 11:41:53] Processing group: 178791023 -> 178791023
+[2026-05-17 11:41:53] Managers error for 178791023: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:54] Contacts found: 2
+[2026-05-17 11:41:54] Processing group: 67598335 -> 67598335
+[2026-05-17 11:41:54] Managers error for 67598335: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:55] Contacts found: 1
+[2026-05-17 11:41:55] Processing group: 69727009 -> 69727009
+[2026-05-17 11:41:56] Managers error for 69727009: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:56] Contacts found: 1
+[2026-05-17 11:41:57] Processing group: 114992070 -> 114992070
+[2026-05-17 11:41:57] Managers error for 114992070: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:41:57] Contacts found: 1
+[2026-05-17 11:41:58] Processing group: 180864851 -> 180864851
+[2026-05-17 11:41:59] Managers error for 180864851: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:00] Contacts found: 1
+[2026-05-17 11:42:00] Processing group: 191960818 -> 191960818
+[2026-05-17 11:42:01] Managers error for 191960818: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:01] No contacts found
+[2026-05-17 11:42:02] Processing group: 170889753 -> 170889753
+[2026-05-17 11:42:02] Managers error for 170889753: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:03] No contacts found
+[2026-05-17 11:42:03] Processing group: 109176735 -> 109176735
+[2026-05-17 11:42:03] Managers error for 109176735: VK error 15: Access denied: group hide members
+[2026-05-17 11:42:04] Contacts found: 2
+[2026-05-17 11:42:04] Processing group: 117640025 -> 117640025
+[2026-05-17 11:42:05] Managers error for 117640025: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:05] Contacts found: 1
+[2026-05-17 11:42:06] Processing group: 155304283 -> 155304283
+[2026-05-17 11:42:06] Managers error for 155304283: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:06] Contacts found: 2
+[2026-05-17 11:42:07] Processing group: 70787377 -> 70787377
+[2026-05-17 11:42:07] Managers error for 70787377: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:08] Contacts found: 1
+[2026-05-17 11:42:08] Processing group: 86326429 -> 86326429
+[2026-05-17 11:42:08] Managers error for 86326429: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:09] Contacts found: 1
+[2026-05-17 11:42:09] Processing group: 151934021 -> 151934021
+[2026-05-17 11:42:10] Managers error for 151934021: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:10] Contacts found: 1
+[2026-05-17 11:42:11] Processing group: 167718984 -> 167718984
+[2026-05-17 11:42:11] Managers error for 167718984: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:11] Contacts found: 1
+[2026-05-17 11:42:12] Processing group: 104649262 -> 104649262
+[2026-05-17 11:42:12] Managers error for 104649262: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:13] Contacts found: 1
+[2026-05-17 11:42:13] Processing group: 32843743 -> 32843743
+[2026-05-17 11:42:13] Managers error for 32843743: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:14] Contacts found: 1
+[2026-05-17 11:42:14] Processing group: 119008274 -> 119008274
+[2026-05-17 11:42:15] Managers error for 119008274: VK error 15: Access denied: group hide members
+[2026-05-17 11:42:15] Contacts found: 2
+[2026-05-17 11:42:15] Processing group: 124057472 -> 124057472
+[2026-05-17 11:42:16] Managers error for 124057472: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:16] No contacts found
+[2026-05-17 11:42:17] Processing group: 64435559 -> 64435559
+[2026-05-17 11:42:17] Managers error for 64435559: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:18] Contacts found: 1
+[2026-05-17 11:42:18] Processing group: 16034603 -> 16034603
+[2026-05-17 11:42:18] Managers error for 16034603: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:19] No contacts found
+[2026-05-17 11:42:19] Processing group: 155078618 -> 155078618
+[2026-05-17 11:42:19] Managers error for 155078618: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:20] Contacts found: 1
+[2026-05-17 11:42:20] Processing group: 111424410 -> 111424410
+[2026-05-17 11:42:21] Managers error for 111424410: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:21] Contacts found: 1
+[2026-05-17 11:42:22] Processing group: 128206018 -> 128206018
+[2026-05-17 11:42:22] Managers error for 128206018: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:22] Contacts found: 1
+[2026-05-17 11:42:23] Processing group: 128209804 -> 128209804
+[2026-05-17 11:42:23] Managers error for 128209804: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:24] No contacts found
+[2026-05-17 11:42:24] Processing group: 43978686 -> 43978686
+[2026-05-17 11:42:24] Managers error for 43978686: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:25] Contacts found: 1
+[2026-05-17 11:42:25] Processing group: 144754284 -> 144754284
+[2026-05-17 11:42:26] Managers error for 144754284: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:26] Contacts found: 1
+[2026-05-17 11:42:27] Processing group: 79853253 -> 79853253
+[2026-05-17 11:42:27] Managers error for 79853253: VK error 15: Access denied: group hide members
+[2026-05-17 11:42:27] Contacts found: 1
+[2026-05-17 11:42:28] Processing group: 41869778 -> 41869778
+[2026-05-17 11:42:28] Managers error for 41869778: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:28] Contacts found: 1
+[2026-05-17 11:42:29] Processing group: 21283551 -> 21283551
+[2026-05-17 11:42:29] Managers error for 21283551: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:30] Contacts found: 1
+[2026-05-17 11:42:30] Processing group: 178391981 -> 178391981
+[2026-05-17 11:42:30] Managers error for 178391981: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:31] Contacts found: 1
+[2026-05-17 11:42:31] Processing group: 116011538 -> 116011538
+[2026-05-17 11:42:32] Managers error for 116011538: VK error 15: Access denied: group hide members
+[2026-05-17 11:42:32] Contacts found: 1
+[2026-05-17 11:42:33] Processing group: 116012348 -> 116012348
+[2026-05-17 11:42:33] Managers error for 116012348: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:33] Contacts found: 1
+[2026-05-17 11:42:34] Processing group: 166273745 -> 166273745
+[2026-05-17 11:42:34] Managers error for 166273745: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:35] Contacts found: 1
+[2026-05-17 11:42:35] Processing group: 154173227 -> 154173227
+[2026-05-17 11:42:35] Managers error for 154173227: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:36] Contacts found: 1
+[2026-05-17 11:42:36] Processing group: 106081110 -> 106081110
+[2026-05-17 11:42:37] Managers error for 106081110: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:38] Contacts found: 2
+[2026-05-17 11:42:38] Processing group: 73034860 -> 73034860
+[2026-05-17 11:42:38] Managers error for 73034860: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:39] Contacts found: 2
+[2026-05-17 11:42:39] Processing group: 117793414 -> 117793414
+[2026-05-17 11:42:40] Managers error for 117793414: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:40] No contacts found
+[2026-05-17 11:42:41] Processing group: 95419355 -> 95419355
+[2026-05-17 11:42:41] Managers error for 95419355: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:41] Contacts found: 2
+[2026-05-17 11:42:42] Processing group: 106066771 -> 106066771
+[2026-05-17 11:42:42] Managers error for 106066771: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:43] Contacts found: 1
+[2026-05-17 11:42:43] Processing group: 105901452 -> 105901452
+[2026-05-17 11:42:43] Managers error for 105901452: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:44] Contacts found: 1
+[2026-05-17 11:42:44] Processing group: 24089759 -> 24089759
+[2026-05-17 11:42:44] Managers error for 24089759: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:45] Contacts found: 2
+[2026-05-17 11:42:45] Processing group: 162780306 -> 162780306
+[2026-05-17 11:42:45] Managers error for 162780306: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:46] Contacts found: 1
+[2026-05-17 11:42:46] Processing group: 78324106 -> 78324106
+[2026-05-17 11:42:46] Managers error for 78324106: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:47] Contacts found: 1
+[2026-05-17 11:42:47] Processing group: 54656681 -> 54656681
+[2026-05-17 11:42:48] Managers error for 54656681: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:48] Contacts found: 1
+[2026-05-17 11:42:49] Processing group: 61689075 -> 61689075
+[2026-05-17 11:42:49] Managers error for 61689075: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:49] Contacts found: 2
+[2026-05-17 11:42:50] Processing group: 20034314 -> 20034314
+[2026-05-17 11:42:50] Managers error for 20034314: VK error 15: Access denied: group hide members
+[2026-05-17 11:42:50] Contacts found: 1
+[2026-05-17 11:42:51] Processing group: 62377958 -> 62377958
+[2026-05-17 11:42:51] Managers error for 62377958: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:52] Contacts found: 1
+[2026-05-17 11:42:52] Processing group: 185808659 -> 185808659
+[2026-05-17 11:42:52] Managers error for 185808659: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:53] Contacts found: 1
+[2026-05-17 11:42:53] Processing group: 17504214 -> 17504214
+[2026-05-17 11:42:53] Managers error for 17504214: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:54] No contacts found
+[2026-05-17 11:42:54] Processing group: 106976390 -> 106976390
+[2026-05-17 11:42:54] Managers error for 106976390: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:55] Contacts found: 3
+[2026-05-17 11:42:55] Processing group: 156824480 -> 156824480
+[2026-05-17 11:42:56] Managers error for 156824480: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:56] Contacts found: 1
+[2026-05-17 11:42:56] Processing group: 115923355 -> 115923355
+[2026-05-17 11:42:57] Managers error for 115923355: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:57] Contacts found: 1
+[2026-05-17 11:42:58] Processing group: 75806253 -> 75806253
+[2026-05-17 11:42:58] Managers error for 75806253: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:42:58] Contacts found: 1
+[2026-05-17 11:42:59] Processing group: 171387830 -> 171387830
+[2026-05-17 11:42:59] Managers error for 171387830: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:00] Contacts found: 1
+[2026-05-17 11:43:00] Processing group: 73118042 -> 73118042
+[2026-05-17 11:43:00] Managers error for 73118042: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:01] Contacts found: 1
+[2026-05-17 11:43:01] Processing group: 178502725 -> 178502725
+[2026-05-17 11:43:01] Managers error for 178502725: VK error 15: Access denied: group hide members
+[2026-05-17 11:43:02] No contacts found
+[2026-05-17 11:43:02] Processing group: 129094101 -> 129094101
+[2026-05-17 11:43:02] Managers error for 129094101: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:03] Contacts found: 3
+[2026-05-17 11:43:03] Processing group: 188904713 -> 188904713
+[2026-05-17 11:43:04] Managers error for 188904713: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:04] Contacts found: 1
+[2026-05-17 11:43:04] Processing group: 188904982 -> 188904982
+[2026-05-17 11:43:05] Managers error for 188904982: VK error 15: Access denied: group hide members
+[2026-05-17 11:43:05] No contacts found
+[2026-05-17 11:43:06] Processing group: 137624488 -> 137624488
+[2026-05-17 11:43:06] Managers error for 137624488: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:06] Contacts found: 1
+[2026-05-17 11:43:07] Processing group: 76570297 -> 76570297
+[2026-05-17 11:43:07] Managers error for 76570297: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:07] Contacts found: 1
+[2026-05-17 11:43:08] Processing group: 19055067 -> 19055067
+[2026-05-17 11:43:08] Managers error for 19055067: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:08] Contacts found: 1
+[2026-05-17 11:43:09] Processing group: 62072697 -> 62072697
+[2026-05-17 11:43:09] Managers error for 62072697: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:09] Contacts found: 1
+[2026-05-17 11:43:10] Processing group: 29569714 -> 29569714
+[2026-05-17 11:43:10] Managers error for 29569714: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:11] Contacts found: 2
+[2026-05-17 11:43:11] Processing group: 178807130 -> 178807130
+[2026-05-17 11:43:11] Managers error for 178807130: VK error 15: Access denied: group hide members
+[2026-05-17 11:43:12] Contacts found: 1
+[2026-05-17 11:43:12] Processing group: 68995157 -> 68995157
+[2026-05-17 11:43:12] Managers error for 68995157: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:13] Contacts found: 1
+[2026-05-17 11:43:13] Processing group: 82347721 -> 82347721
+[2026-05-17 11:43:14] Managers error for 82347721: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:15] Contacts found: 1
+[2026-05-17 11:43:15] Processing group: 73771234 -> 73771234
+[2026-05-17 11:43:15] Managers error for 73771234: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:16] Contacts found: 1
+[2026-05-17 11:43:16] Processing group: 102586455 -> 102586455
+[2026-05-17 11:43:16] Managers error for 102586455: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:17] No contacts found
+[2026-05-17 11:43:17] Processing group: 154790018 -> 154790018
+[2026-05-17 11:43:17] Managers error for 154790018: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:18] Contacts found: 1
+[2026-05-17 11:43:18] Processing group: 50284164 -> 50284164
+[2026-05-17 11:43:19] Managers error for 50284164: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:19] Contacts found: 1
+[2026-05-17 11:43:20] Processing group: 36032411 -> 36032411
+[2026-05-17 11:43:20] Managers error for 36032411: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:20] Contacts found: 2
+[2026-05-17 11:43:21] Processing group: 120376453 -> 120376453
+[2026-05-17 11:43:21] Managers error for 120376453: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:21] Contacts found: 1
+[2026-05-17 11:43:22] Processing group: 120378211 -> 120378211
+[2026-05-17 11:43:22] Managers error for 120378211: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:23] Contacts found: 1
+[2026-05-17 11:43:23] Processing group: 42204518 -> 42204518
+[2026-05-17 11:43:23] Managers error for 42204518: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:24] Contacts found: 1
+[2026-05-17 11:43:24] Processing group: 162194895 -> 162194895
+[2026-05-17 11:43:24] Managers error for 162194895: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:25] Contacts found: 1
+[2026-05-17 11:43:25] Processing group: 73925779 -> 73925779
+[2026-05-17 11:43:25] Managers error for 73925779: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:26] Contacts found: 1
+[2026-05-17 11:43:26] Processing group: 143777666 -> 143777666
+[2026-05-17 11:43:26] Managers error for 143777666: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:27] Contacts found: 1
+[2026-05-17 11:43:27] Processing group: 159050300 -> 159050300
+[2026-05-17 11:43:28] Managers error for 159050300: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:28] Contacts found: 1
+[2026-05-17 11:43:29] Processing group: 159053508 -> 159053508
+[2026-05-17 11:43:29] Managers error for 159053508: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:29] No contacts found
+[2026-05-17 11:43:30] Processing group: 65786804 -> 65786804
+[2026-05-17 11:43:30] Managers error for 65786804: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:31] Contacts found: 1
+[2026-05-17 11:43:31] Processing group: 151802862 -> 151802862
+[2026-05-17 11:43:31] Managers error for 151802862: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:32] Contacts found: 1
+[2026-05-17 11:43:32] Processing group: 107264191 -> 107264191
+[2026-05-17 11:43:33] Managers error for 107264191: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:33] No contacts found
+[2026-05-17 11:43:33] Processing group: 104133988 -> 104133988
+[2026-05-17 11:43:34] Managers error for 104133988: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:34] Contacts found: 1
+[2026-05-17 11:43:35] Processing group: 86616559 -> 86616559
+[2026-05-17 11:43:35] Managers error for 86616559: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:35] Contacts found: 1
+[2026-05-17 11:43:36] Processing group: 56508835 -> 56508835
+[2026-05-17 11:43:36] Managers error for 56508835: VK error 15: Access denied: group hide members
+[2026-05-17 11:43:37] Contacts found: 2
+[2026-05-17 11:43:37] Processing group: 56509227 -> 56509227
+[2026-05-17 11:43:37] Managers error for 56509227: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:38] Contacts found: 1
+[2026-05-17 11:43:38] Processing group: 62235605 -> 62235605
+[2026-05-17 11:43:38] Managers error for 62235605: VK error 15: Access denied: group hide members
+[2026-05-17 11:43:39] Contacts found: 8
+[2026-05-17 11:43:39] Processing group: 158256615 -> 158256615
+[2026-05-17 11:43:40] Managers error for 158256615: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:40] Contacts found: 1
+[2026-05-17 11:43:40] Processing group: 33782174 -> 33782174
+[2026-05-17 11:43:41] Managers error for 33782174: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:42] Contacts found: 2
+[2026-05-17 11:43:42] Processing group: 176316262 -> 176316262
+[2026-05-17 11:43:42] Managers error for 176316262: VK error 15: Access denied: group hide members
+[2026-05-17 11:43:43] Contacts found: 2
+[2026-05-17 11:43:43] Processing group: 73523683 -> 73523683
+[2026-05-17 11:43:43] Managers error for 73523683: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:44] Contacts found: 1
+[2026-05-17 11:43:44] Processing group: 140174330 -> 140174330
+[2026-05-17 11:43:45] Managers error for 140174330: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:45] No contacts found
+[2026-05-17 11:43:45] Processing group: 124794847 -> 124794847
+[2026-05-17 11:43:46] Managers error for 124794847: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:46] Contacts found: 1
+[2026-05-17 11:43:47] Processing group: 191973791 -> 191973791
+[2026-05-17 11:43:47] Managers error for 191973791: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:47] Contacts found: 1
+[2026-05-17 11:43:48] Processing group: 116464642 -> 116464642
+[2026-05-17 11:43:48] Managers error for 116464642: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:49] Contacts found: 1
+[2026-05-17 11:43:49] Processing group: 169057735 -> 169057735
+[2026-05-17 11:43:49] Managers error for 169057735: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:50] Contacts found: 1
+[2026-05-17 11:43:50] Processing group: 162186790 -> 162186790
+[2026-05-17 11:43:50] Managers error for 162186790: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:51] Contacts found: 1
+[2026-05-17 11:43:51] Processing group: 53485474 -> 53485474
+[2026-05-17 11:43:52] Managers error for 53485474: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:52] Contacts found: 2
+[2026-05-17 11:43:53] Processing group: 169194984 -> 169194984
+[2026-05-17 11:43:53] Managers error for 169194984: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:53] Contacts found: 1
+[2026-05-17 11:43:54] Processing group: 92967934 -> 92967934
+[2026-05-17 11:43:54] Managers error for 92967934: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:55] Contacts found: 1
+[2026-05-17 11:43:55] Processing group: 12832568 -> 12832568
+[2026-05-17 11:43:55] Managers error for 12832568: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:56] Contacts found: 1
+[2026-05-17 11:43:56] Processing group: 165551779 -> 165551779
+[2026-05-17 11:43:57] Managers error for 165551779: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:57] Contacts found: 2
+[2026-05-17 11:43:58] Processing group: 1953747 -> 1953747
+[2026-05-17 11:43:58] Managers error for 1953747: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:43:58] No contacts found
+[2026-05-17 11:43:59] Processing group: 43899218 -> 43899218
+[2026-05-17 11:43:59] Managers error for 43899218: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:44:00] Contacts found: 1
+[2026-05-17 11:44:00] Processing group: 77512886 -> 77512886
+[2026-05-17 11:44:00] Managers error for 77512886: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:44:01] Contacts found: 1
+[2026-05-17 11:44:01] Processing group: 194708973 -> 194708973
+[2026-05-17 11:44:02] Managers error for 194708973: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:44:02] No contacts found
+[2026-05-17 11:44:03] Processing group: 115798425 -> 115798425
+[2026-05-17 11:44:03] Managers error for 115798425: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:44:03] Contacts found: 1
+[2026-05-17 11:44:04] Processing group: 22179710 -> 22179710
+[2026-05-17 11:44:04] Managers error for 22179710: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:44:05] Contacts found: 3
+[2026-05-17 11:44:05] Processing group: 166779791 -> 166779791
+[2026-05-17 11:44:05] Managers error for 166779791: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:44:06] Contacts found: 1
+[2026-05-17 11:44:06] Processing group: 183552694 -> 183552694
+[2026-05-17 11:44:07] Managers error for 183552694: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:44:07] Contacts found: 1
+[2026-05-17 11:44:08] Processing group: 80533589 -> 80533589
+[2026-05-17 11:44:08] Managers error for 80533589: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:44:08] Contacts found: 1
+[2026-05-17 11:44:09] Processing group: 142675713 -> 142675713
+[2026-05-17 11:44:09] Managers error for 142675713: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:44:10] Contacts found: 1
+[2026-05-17 11:44:10] Processing group: 167939658 -> 167939658
+[2026-05-17 11:44:10] Managers error for 167939658: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:44:11] No contacts found
+[2026-05-17 11:44:11] Processing group: 178180275 -> 178180275
+[2026-05-17 11:44:12] Managers error for 178180275: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:44:12] Contacts found: 1
+[2026-05-17 11:44:12] Processing group: 81519122 -> 81519122
+[2026-05-17 11:44:13] Managers error for 81519122: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:44:13] Contacts found: 1
+[2026-05-17 11:44:13] Processing group: 27429185 -> 27429185
+[2026-05-17 11:44:14] Managers error for 27429185: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:44:14] Contacts found: 1
+[2026-05-17 11:44:15] Processing group: 129181926 -> 129181926
+[2026-05-17 11:44:15] Managers error for 129181926: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:44:16] Contacts found: 1
+[2026-05-17 11:44:16] Processing group: 24515289 -> 24515289
+[2026-05-17 11:44:16] Managers error for 24515289: VK error 15: Access denied: group hide members
+[2026-05-17 11:44:17] Contacts found: 1
+[2026-05-17 11:44:17] Processing group: 109247873 -> 109247873
+[2026-05-17 11:44:17] Managers error for 109247873: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:44:18] No contacts found
+[2026-05-17 11:44:18] Processing group: 119628389 -> 119628389
+[2026-05-17 11:44:19] Managers error for 119628389: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:44:19] Contacts found: 1
+[2026-05-17 11:44:20] Processing group: 94716976 -> 94716976
+[2026-05-17 11:44:20] Managers error for 94716976: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:44:21] Contacts found: 1
+[2026-05-17 11:44:21] Processing group: 152012046 -> 152012046
+[2026-05-17 11:44:21] Managers error for 152012046: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:44:22] Contacts found: 1
+[2026-05-17 11:44:22] Processing group: 159078313 -> 159078313
+[2026-05-17 11:44:22] Managers error for 159078313: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:44:23] Contacts found: 1
+[2026-05-17 11:44:23] Processing group: 47765486 -> 47765486
+[2026-05-17 11:44:24] Managers error for 47765486: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:44:24] No contacts found
+[2026-05-17 11:44:25] Processing group: 107949492 -> 107949492
+[2026-05-17 11:44:25] Managers error for 107949492: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:44:25] No contacts found
+[2026-05-17 11:44:26] Processing group: 110566024 -> 110566024
+[2026-05-17 11:44:26] Managers error for 110566024: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:44:27] No contacts found
+[2026-05-17 11:44:27] Processing group: 55675640 -> 55675640
+[2026-05-17 11:44:27] Managers error for 55675640: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:44:28] Contacts found: 1
+[2026-05-17 11:44:28] Processing group: 55676235 -> 55676235
+[2026-05-17 11:44:28] Managers error for 55676235: VK error 15: Access denied: group hide members
+[2026-05-17 11:44:29] Contacts found: 1
+[2026-05-17 11:44:29] Processing group: 192200160 -> 192200160
+[2026-05-17 11:44:30] Managers error for 192200160: VK error 15: Access denied: group hide members
+[2026-05-17 11:44:30] Contacts found: 1
+[2026-05-17 11:44:31] Processing group: 59397591 -> 59397591
+[2026-05-17 11:44:31] Managers error for 59397591: VK error 15: Access denied: you should be a group administrator
+[2026-05-17 11:44:32] Contacts found: 1
+[2026-05-17 11:44:32] Processing group: 92076036 -> 92076036

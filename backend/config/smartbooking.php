@@ -7,6 +7,7 @@ $oauthCallbackPath = static function (string $provider): string {
 };
 
 return [
+    'public_booking_base_url' => rtrim((string) env('PUBLIC_BOOKING_BASE_URL', 'https://smartbookingbot.ru/book'), '/'),
     /** @deprecated Used only for migrating old balance-based access to subscription_ends_at. */
     'subscription_price_kopecks' => (int) env('SUBSCRIPTION_PRICE_KOPECKS', 100_000),
     'trial_days' => (int) env('TRIAL_DAYS', 30),

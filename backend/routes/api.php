@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\ContactMessageController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OAuthController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\PublicBookingController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\SocialAccountController;
 use App\Http\Controllers\Api\VkIntegrationController;
@@ -27,6 +28,12 @@ Route::post('/login', [AuthController::class, 'login']);
 
 Route::get('/oauth/vk/start', [OAuthController::class, 'vkStart']);
 Route::get('/oauth/yandex/start', [OAuthController::class, 'yandexStart']);
+
+Route::prefix('public/book')->middleware('throttle:60,1')->group(function () {
+    Route::get('{slug}', [PublicBookingController::class, 'show']);
+    Route::get('{slug}/slots', [PublicBookingController::class, 'slots']);
+    Route::post('{slug}/appointments', [PublicBookingController::class, 'store']);
+});
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);

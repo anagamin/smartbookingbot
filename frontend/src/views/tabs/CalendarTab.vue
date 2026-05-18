@@ -52,6 +52,7 @@ const form = ref({
   status: 'confirmed' as 'confirmed' | 'cancelled',
 })
 const sessionMessages = ref<Array<{ direction: string; text: string; created_at: string }>>([])
+const chatExcerpt = ref('')
 
 function appointmentServiceIdsFromDetail(data: {
   service_id?: number | null
@@ -190,6 +191,7 @@ function onDateClick(arg: { date: Date; dateStr: string; allDay: boolean }) {
     status: 'confirmed',
   }
   sessionMessages.value = []
+  chatExcerpt.value = ''
 }
 
 async function onEventClick(arg: { event: { id: string } }) {
@@ -205,6 +207,7 @@ async function onEventClick(arg: { event: { id: string } }) {
     status: data.status,
   }
   sessionMessages.value = data.messages || []
+  chatExcerpt.value = data.chat_excerpt || ''
 }
 
 async function saveAppointment() {
@@ -379,6 +382,10 @@ onBeforeUnmount(() => {
               <option value="cancelled">Отменена</option>
             </select>
           </div>
+        </div>
+        <div v-if="chatExcerpt" class="mt-4 border-t border-white/10 pt-4">
+          <h4 class="text-xs font-medium uppercase text-slate-500">Комментарий клиента</h4>
+          <p class="mt-2 whitespace-pre-wrap text-sm text-slate-300">{{ chatExcerpt }}</p>
         </div>
         <div v-if="sessionMessages.length" class="mt-4 border-t border-white/10 pt-4">
           <h4 class="text-xs font-medium uppercase text-slate-500">Сообщения сессии</h4>

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\BookingSlug;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -22,12 +23,22 @@ use Laravel\Sanctum\HasApiTokens;
     'subscription_ends_at',
     'bot_paused',
     'services_description',
+    'booking_slug',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
+
+    protected static function booted(): void
+    {
+        static::creating(function (User $user): void {
+            if (empty($user->booking_slug)) {
+                $user->booking_slug = BookingSlug::generateUnique($user->name);
+            }
+        });
+    }
 
     protected function casts(): array
     {
@@ -154,6 +165,8 @@ class User extends Authenticatable
             'days_until_subscription_ends' => $this->daysUntilSubscriptionEnds(),
             'bot_responds_to_clients' => $this->canRunBot(),
             'services_description' => $this->services_description,
+            'booking_slug' => $this->booking_slug,
+            'booking_url_base' => config('smartbooking.public_booking_base_url'),
         ];
     }
 }

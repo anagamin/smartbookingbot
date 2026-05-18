@@ -28,6 +28,11 @@ const router = createRouter({
       component: () => import('../views/AuthCallback.vue'),
     },
     {
+      path: '/book/:slug',
+      name: 'public-book',
+      component: () => import('../views/PublicBookView.vue'),
+    },
+    {
       path: '/app',
       component: () => import('../views/DashboardLayout.vue'),
       meta: { requiresAuth: true },

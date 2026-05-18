@@ -6,6 +6,11 @@ import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 const name = ref('')
 const sex = ref('')
 const services_description = ref('')
+const bookingSlug = ref('')
+const bookingUrlBase = ref('https://smartbookingbot.ru/book')
+const bookingSlugMsg = ref('')
+const bookingSlugMsgIsError = ref(false)
+const bookingSlugSaving = ref(false)
 const msg = ref('')
 const msgIsError = ref(false)
 
@@ -90,12 +95,16 @@ async function load(): Promise<void> {
     name: string
     sex: string | null
     services_description: string | null
+    booking_slug: string | null
+    booking_url_base: string
     bot_paused: boolean
     subscription_active: boolean
   }>('/user')
   name.value = u.data.name
   sex.value = u.data.sex || ''
   services_description.value = u.data.services_description || ''
+  bookingSlug.value = u.data.booking_slug || ''
+  bookingUrlBase.value = u.data.booking_url_base || 'https://smartbookingbot.ru/book'
   botPaused.value = u.data.bot_paused
   subscriptionActive.value = u.data.subscription_active
   await loadVkGroup()
@@ -132,6 +141,44 @@ async function onBotSwitchChange(ev: Event): Promise<void> {
       : 'Не удалось изменить'
   } finally {
     botToggleLoading.value = false
+  }
+}
+
+async function saveBookingSlug(): Promise<void> {
+  bookingSlugMsg.value = ''
+  bookingSlugMsgIsError.value = false
+  bookingSlugSaving.value = true
+  try {
+    const { data } = await http.patch<{ user: { booking_slug: string } }>('/profile', {
+      booking_slug: bookingSlug.value.trim(),
+    })
+    bookingSlug.value = data.user.booking_slug
+    bookingSlugMsg.value = 'Ссылка сохранена'
+  } catch (e: unknown) {
+    bookingSlugMsgIsError.value = true
+    if (axios.isAxiosError(e) && e.response?.status === 422) {
+      const body = e.response.data as { errors?: Record<string, string[]>; message?: string }
+      const slugErr = body.errors?.booking_slug?.join(' ')
+      bookingSlugMsg.value = slugErr || body.message || 'Проверьте адрес ссылки'
+    } else {
+      bookingSlugMsg.value = axios.isAxiosError(e)
+        ? String((e.response?.data as { message?: string })?.message || e.message || 'Ошибка сохранения')
+        : 'Ошибка сохранения'
+    }
+  } finally {
+    bookingSlugSaving.value = false
+  }
+}
+
+async function copyBookingLink(): Promise<void> {
+  const url = `${bookingUrlBase.value.replace(/\/$/, '')}/${bookingSlug.value}`
+  try {
+    await navigator.clipboard.writeText(url)
+    bookingSlugMsg.value = 'Ссылка скопирована'
+    bookingSlugMsgIsError.value = false
+  } catch {
+    bookingSlugMsgIsError.value = true
+    bookingSlugMsg.value = 'Не удалось скопировать'
   }
 }
 
@@ -252,6 +299,51 @@ onBeforeUnmount(() => {
     <p v-if="msg" class="text-sm" :class="msgIsError ? 'text-red-400' : 'text-emerald-400'">
       {{ msg }}
     </p>
+
+    <form
+      class="space-y-3 rounded-xl border border-indigo-500/25 bg-indigo-950/20 p-6"
+      @submit.prevent="saveBookingSlug"
+    >
+      <label class="block text-sm font-medium text-white">Ссылка для записи клиента</label>
+      <p class="text-xs text-slate-400">
+        Отправьте эту ссылку клиентам — они смогут выбрать услуги и записаться без переписки во ВКонтакте.
+      </p>
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+        <div class="flex min-w-0 flex-1 overflow-hidden rounded-lg border border-white/10 bg-slate-950">
+          <span class="hidden shrink-0 items-center border-r border-white/10 bg-slate-900/80 px-3 text-xs text-slate-400 sm:flex">
+            {{ bookingUrlBase.replace(/\/$/, '') }}/
+          </span>
+          <input
+            v-model="bookingSlug"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="ваш-адрес"
+            class="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-white placeholder:text-slate-600"
+          />
+        </div>
+        <div class="flex shrink-0 gap-2">
+          <button
+            type="button"
+            class="rounded-lg border border-white/20 px-3 py-2 text-sm text-white hover:bg-white/5"
+            @click="copyBookingLink"
+          >
+            Копировать
+          </button>
+          <button
+            type="submit"
+            class="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400 disabled:opacity-50"
+            :disabled="bookingSlugSaving"
+          >
+            {{ bookingSlugSaving ? '…' : 'Сохранить' }}
+          </button>
+        </div>
+      </div>
+      <p class="text-xs text-slate-500 sm:hidden">{{ bookingUrlBase.replace(/\/$/, '') }}/{{ bookingSlug || '…' }}</p>
+      <p v-if="bookingSlugMsg" class="text-sm" :class="bookingSlugMsgIsError ? 'text-red-400' : 'text-emerald-400'">
+        {{ bookingSlugMsg }}
+      </p>
+    </form>
 
     <div
       class="rounded-xl border p-6 shadow-lg"

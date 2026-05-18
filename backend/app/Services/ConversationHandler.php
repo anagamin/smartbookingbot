@@ -174,6 +174,7 @@ class ConversationHandler
                 80,
                 $durationOverride,
                 $master,
+                $resolved->isNotEmpty() ? $resolved : null,
             );
 
             if ($suggestions === [] && $requestedDayOnly) {
@@ -224,7 +225,7 @@ class ConversationHandler
     ): array {
         $singleService = $resolved->count() === 1 ? $resolved->first() : null;
 
-        if ($resolved->isNotEmpty() && $master === null && $mastersForServices->count() > 1) {
+        if ($resolved->isNotEmpty() && $master === null) {
             return $this->slots->suggestSlotsForServices($owner, $resolved, 14, 48);
         }
 

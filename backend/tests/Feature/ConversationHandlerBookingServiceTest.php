@@ -1142,4 +1142,130 @@ class ConversationHandlerBookingServiceTest extends DatabaseTestCase
         $this->assertStringContainsString('22 мая', $captured);
         $this->assertStringContainsString('23 мая', $captured);
     }
+
+    public function test_availability_week_range_excludes_masters_without_requested_service(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-05-18 10:00:00'));
+
+        $user = User::factory()->create(['business_mode' => 'salon']);
+        $yuri = Master::query()->create(['user_id' => $user->id, 'name' => 'Юрий', 'sort_order' => 0]);
+        $maxim = Master::query()->create(['user_id' => $user->id, 'name' => 'Максим', 'sort_order' => 1]);
+        $oksana = Master::query()->create(['user_id' => $user->id, 'name' => 'Оксана', 'sort_order' => 2]);
+
+        foreach ([1, 2] as $weekday) {
+            WorkingHour::query()->create([
+                'user_id' => $user->id,
+                'master_id' => $yuri->id,
+                'weekday' => $weekday,
+                'opens_at' => '10:00:00',
+                'closes_at' => '17:00:00',
+            ]);
+        }
+        foreach ([2, 3] as $weekday) {
+            WorkingHour::query()->create([
+                'user_id' => $user->id,
+                'master_id' => $oksana->id,
+                'weekday' => $weekday,
+                'opens_at' => '10:00:00',
+                'closes_at' => '17:00:00',
+            ]);
+        }
+        foreach ([4, 5] as $weekday) {
+            WorkingHour::query()->create([
+                'user_id' => $user->id,
+                'master_id' => $maxim->id,
+                'weekday' => $weekday,
+                'opens_at' => '10:00:00',
+                'closes_at' => '17:00:00',
+            ]);
+        }
+
+        Service::query()->create([
+            'user_id' => $user->id,
+            'master_id' => $yuri->id,
+            'title' => 'Маникюр',
+            'duration_minutes' => 60,
+            'price_kopecks' => 1000,
+            'is_active' => true,
+        ]);
+        Service::query()->create([
+            'user_id' => $user->id,
+            'master_id' => $maxim->id,
+            'title' => 'Маникюр',
+            'duration_minutes' => 60,
+            'price_kopecks' => 1000,
+            'is_active' => true,
+        ]);
+        Service::query()->create([
+            'user_id' => $user->id,
+            'master_id' => $oksana->id,
+            'title' => 'Стрижка',
+            'duration_minutes' => 60,
+            'price_kopecks' => 1000,
+            'is_active' => true,
+        ]);
+
+        $vk = SocialAccount::query()->create([
+            'user_id' => $user->id,
+            'provider' => SocialAccount::PROVIDER_VK_GROUP,
+            'provider_user_id' => 'g1',
+            'access_token' => 'token',
+        ]);
+
+        $dialog = Dialog::query()->create([
+            'user_id' => $user->id,
+            'social_account_id' => $vk->id,
+            'external_client_id' => '100',
+            'client_name' => 'Клиент',
+        ]);
+
+        $session = DialogSession::query()->create([
+            'dialog_id' => $dialog->id,
+            'status' => DialogSession::STATUS_OPEN,
+            'started_at' => now(),
+        ]);
+
+        $ai = new AiIntentResult(
+            intent: 'availability_request',
+            confidence: 0.9,
+            service: 'Маникюр',
+            services: ['Маникюр'],
+            master: null,
+            date: '2026-05-18',
+            dateEnd: '2026-05-24',
+            time: null,
+            reply: '',
+            needsOwner: false,
+        );
+
+        $captured = '';
+        $gpt = Mockery::mock(GptunnelClient::class);
+        $gpt->shouldReceive('classifyMessage')->once()->andReturn($ai);
+        $this->app->instance(GptunnelClient::class, $gpt);
+        $vkMock = Mockery::mock(VkApiService::class);
+        $vkMock->shouldReceive('sendGroupMessage')->once()->with(
+            Mockery::type('string'),
+            Mockery::type('int'),
+            Mockery::on(function (string $msg) use (&$captured) {
+                $captured = $msg;
+
+                return true;
+            }),
+        );
+        $this->app->instance(VkApiService::class, $vkMock);
+
+        $handler = $this->app->make(ConversationHandler::class);
+        $handler->handleInbound(
+            $user,
+            $vk,
+            $dialog,
+            $session,
+            'хочу записаться на маникюр. какие свободные окна есть на эту неделю?',
+            1,
+        );
+
+        $this->assertStringContainsString('Юрий', $captured);
+        $this->assertStringContainsString('Максим', $captured);
+        $this->assertStringNotContainsString('Оксана', $captured);
+    }
 }

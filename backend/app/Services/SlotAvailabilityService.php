@@ -16,6 +16,9 @@ class SlotAvailabilityService
     /**
      * @return list<array{start: Carbon, end: Carbon, master_id?: int, master_name?: string}>
      */
+    /**
+     * @param  Collection<int, Service>|null  $services  When set, only masters linked to these services are considered.
+     */
     public function suggestSlotsInDateRange(
         User $user,
         ?Service $service,
@@ -24,6 +27,7 @@ class SlotAvailabilityService
         int $maxSuggestions = 60,
         ?int $durationMinutesOverride = null,
         ?Master $master = null,
+        ?Collection $services = null,
     ): array {
         if ($master !== null) {
             return $this->suggestSlotsInDateRangeForMaster(
@@ -37,10 +41,20 @@ class SlotAvailabilityService
             );
         }
 
-        $masters = $this->resolveMastersForAvailability($user, $service !== null ? collect([$service]) : collect());
+        $servicesForMasters = $services !== null && $services->isNotEmpty()
+            ? $services
+            : ($service !== null ? collect([$service]) : collect());
+
+        $masters = $this->resolveMastersForAvailability($user, $servicesForMasters);
 
         if ($masters->count() <= 1) {
-            $single = $masters->first() ?? $user->primaryMaster();
+            $single = $masters->first();
+            if ($single === null) {
+                if ($servicesForMasters->isNotEmpty()) {
+                    return [];
+                }
+                $single = $user->primaryMaster();
+            }
 
             return $single !== null
                 ? $this->suggestSlotsInDateRangeForMaster($user, $single, $service, $rangeStart, $rangeEnd, $maxSuggestions, $durationMinutesOverride)
@@ -109,6 +123,10 @@ class SlotAvailabilityService
                 $maxSuggestions,
                 $durationOverride,
             );
+        }
+
+        if ($services->isNotEmpty()) {
+            return [];
         }
 
         return $this->suggestSlots($user, $singleService, $daysAhead, $maxSuggestions, $durationOverride, $user->primaryMaster());
@@ -276,6 +294,10 @@ class SlotAvailabilityService
 
         if ($withSchedule->isNotEmpty()) {
             return $withSchedule;
+        }
+
+        if ($services->isNotEmpty()) {
+            return $masters;
         }
 
         $anyWithSchedule = $user->masters()

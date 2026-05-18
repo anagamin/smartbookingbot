@@ -98,8 +98,8 @@ class ConversationHandler
     ): ?string {
         return match ($ai->intent) {
             'informational' => $this->handleInformational($owner, $ai),
-            'availability_request' => $this->handleAvailability($owner, $session, $ai),
-            'booking_confirm' => $this->handleBookingConfirm($owner, $dialog, $session, $ai),
+            'availability_request' => $this->handleAvailability($owner, $session, $ai, $inboundText),
+            'booking_confirm' => $this->handleBookingConfirm($owner, $dialog, $session, $ai, $inboundText),
             'booking_cancel' => $this->handleBookingCancel($owner, $dialog, $session, $ai, $inboundMessage),
             'chit_chat' => $ai->reply !== '' ? $ai->reply : 'Пожалуйста! Если понадобится запись — напишите.',
             default => $this->handleOther($owner, $ai, $inboundText),
@@ -117,12 +117,12 @@ class ConversationHandler
         return $ai->reply !== '' ? $ai->reply : null;
     }
 
-    private function handleAvailability(User $owner, DialogSession $session, AiIntentResult $ai): string
+    private function handleAvailability(User $owner, DialogSession $session, AiIntentResult $ai, string $inboundText): string
     {
         $masterContext = $this->resolveMasterFromContext($owner, $session, $ai);
         $masterFilter = $masterContext instanceof Master ? $masterContext : null;
 
-        $resolved = $this->resolveServicesFromContext($owner, $session, $ai, $masterFilter);
+        $resolved = $this->resolveServicesFromContext($owner, $session, $ai, $masterFilter, $inboundText);
         $resolved = $this->slots->expandServicesWithSameTitle($owner, $resolved);
         $mastersForServices = $this->slots->resolveMastersForAvailability($owner, $resolved);
 
@@ -260,6 +260,7 @@ class ConversationHandler
         Dialog $dialog,
         DialogSession $session,
         AiIntentResult $ai,
+        string $inboundText,
     ): ?string {
         $resolvedDate = $this->normalizeAiDate($ai->date);
         if ($resolvedDate === null || $ai->time === null || $ai->time === '') {
@@ -269,7 +270,7 @@ class ConversationHandler
         }
         $masterContext = $this->resolveMasterFromContext($owner, $session, $ai);
 
-        $services = $this->resolveServicesFromContext($owner, $session, $ai, $masterContext);
+        $services = $this->resolveServicesFromContext($owner, $session, $ai, $masterContext, $inboundText);
         if ($services->isEmpty()) {
             $active = Service::query()
                 ->where('user_id', $owner->id)
@@ -513,12 +514,18 @@ class ConversationHandler
     }
 
     /**
-     * Активные услуги для записи/слотов: из полей AI (несколько названий), из текста сессии или одна активная в кабинете.
+     * Услуги для записи/слотов (приоритет): текущее сообщение → поля AI → последние 20 реплик → пусто
+     * (тогда слоты по текущему мастеру или по всем мастерам). Если в кабинете одна активная услуга — она по умолчанию.
      *
      * @return Collection<int, Service>
      */
-    private function resolveServicesFromContext(User $owner, DialogSession $session, AiIntentResult $ai, ?Master $master = null): Collection
-    {
+    private function resolveServicesFromContext(
+        User $owner,
+        DialogSession $session,
+        AiIntentResult $ai,
+        ?Master $master = null,
+        ?string $inboundText = null,
+    ): Collection {
         $activeQuery = Service::query()
             ->where('user_id', $owner->id)
             ->where('is_active', true);
@@ -533,57 +540,60 @@ class ConversationHandler
             return collect();
         }
 
+        $inbound = trim((string) $inboundText);
+        if ($inbound !== '') {
+            $fromInbound = $this->slots->findServicesInDialogText($owner, $inbound, $master);
+            if ($fromInbound->isNotEmpty()) {
+                return $fromInbound;
+            }
+        }
+
+        $fromAi = collect();
+        foreach ($ai->services as $title) {
+            foreach ($this->slots->findServicesByTitle($owner, $title, $master) as $s) {
+                $fromAi->push($s);
+            }
+        }
+        $fromAi = $fromAi->unique('id')->values();
+        if ($fromAi->isNotEmpty()) {
+            return $fromAi;
+        }
+
+        $fromHistory = $this->resolveServicesFromRecentMessages($owner, $session, $master, 20, $inbound !== '' ? $inbound : null);
+        if ($fromHistory->isNotEmpty()) {
+            return $fromHistory;
+        }
+
         if ($active->count() === 1) {
             return collect([$active->first()]);
         }
 
-        $resolved = collect();
-        foreach ($ai->services as $title) {
-            foreach ($this->slots->findServicesByTitle($owner, $title, $master) as $s) {
-                $resolved->push($s);
-            }
-        }
-        $resolved = $resolved->unique('id')->values();
-        if ($resolved->isNotEmpty()) {
-            return $resolved;
-        }
-
-        $fromRecent = $this->resolveServicesFromRecentMessages($owner, $session, $master);
-        if ($fromRecent->isNotEmpty()) {
-            return $fromRecent;
-        }
-
-        $corpus = Message::query()
-            ->where('dialog_session_id', $session->id)
-            ->orderBy('id')
-            ->pluck('text')
-            ->map(fn (string $t) => mb_strtolower($t))
-            ->implode("\n");
-
-        if ($corpus === '') {
-            return collect();
-        }
-
-        return $this->slots->findServicesInDialogText($owner, $corpus, $master);
+        return collect();
     }
 
     /**
-     * Берём услуги из последнего сообщения, где они явно упомянуты (с конца сессии), чтобы запрос
-     * «слоты на завтра» не тянул сумму длительностей из старого «маникюр и педикюр» в начале чата.
+     * Услуги из последнего сообщения сессии, где они явно упомянуты (с конца), без текущей реплики.
      *
      * @return Collection<int, Service>
      */
-    private function resolveServicesFromRecentMessages(User $owner, DialogSession $session, ?Master $master = null): Collection
-    {
+    private function resolveServicesFromRecentMessages(
+        User $owner,
+        DialogSession $session,
+        ?Master $master = null,
+        int $limit = 20,
+        ?string $excludeText = null,
+    ): Collection {
         $messages = Message::query()
             ->where('dialog_session_id', $session->id)
             ->orderByDesc('id')
-            ->limit(40)
+            ->limit($limit)
             ->get(['text']);
+
+        $exclude = $excludeText !== null ? trim($excludeText) : null;
 
         foreach ($messages as $m) {
             $t = trim((string) $m->text);
-            if ($t === '') {
+            if ($t === '' || ($exclude !== null && $exclude !== '' && $t === $exclude)) {
                 continue;
             }
             $found = $this->slots->findServicesInDialogText($owner, $t, $master);

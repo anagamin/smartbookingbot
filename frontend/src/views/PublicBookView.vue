@@ -19,6 +19,17 @@ type SlotDay = {
   slots: Array<{ starts_at: string; ends_at: string; time: string }>
 }
 
+type BookingConfirmation = {
+  clientName: string
+  dateLabel: string
+  timeLabel: string
+  services: string[]
+  durationMinutes: number
+  priceRub: number | null
+}
+
+const BOOKING_TIMEZONE = 'Europe/Moscow'
+
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? ''))
 
@@ -35,7 +46,7 @@ const comment = ref('')
 const slotDays = ref<SlotDay[]>([])
 const slotsLoading = ref(false)
 const submitLoading = ref(false)
-const successMessage = ref('')
+const bookingConfirmation = ref<BookingConfirmation | null>(null)
 const errorMessage = ref('')
 
 const selectedServices = computed(() =>
@@ -55,11 +66,41 @@ const totalPriceRub = computed(() => {
 
 const hasPrice = computed(() => selectedServices.value.some((s) => (s.price_kopecks ?? 0) > 0))
 
+function formatBookingDate(iso: string): string {
+  return new Intl.DateTimeFormat('ru-RU', {
+    timeZone: BOOKING_TIMEZONE,
+    day: 'numeric',
+    month: 'long',
+    weekday: 'long',
+  }).format(new Date(iso))
+}
+
+function formatBookingTimeRange(startIso: string, endIso: string): string {
+  const timeOpts: Intl.DateTimeFormatOptions = {
+    timeZone: BOOKING_TIMEZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+  }
+  const start = new Intl.DateTimeFormat('ru-RU', timeOpts).format(new Date(startIso))
+  const end = new Intl.DateTimeFormat('ru-RU', timeOpts).format(new Date(endIso))
+  return `${start} – ${end}`
+}
+
+function startNewBooking(): void {
+  bookingConfirmation.value = null
+  clientName.value = ''
+  serviceIds.value = services.value.length === 1 ? [services.value[0].id] : []
+  selectedStartsAt.value = ''
+  comment.value = ''
+  errorMessage.value = ''
+  void loadSlots()
+}
+
 async function loadPage(): Promise<void> {
   loading.value = true
   notFound.value = false
   errorMessage.value = ''
-  successMessage.value = ''
+  bookingConfirmation.value = null
   try {
     const { data } = await publicHttp.get<{
       owner_name: string
@@ -117,12 +158,12 @@ watch(serviceIds, () => {
 watch(slug, () => {
   serviceIds.value = []
   selectedStartsAt.value = ''
+  bookingConfirmation.value = null
   void loadPage()
 }, { immediate: true })
 
 async function submitBooking(): Promise<void> {
   errorMessage.value = ''
-  successMessage.value = ''
   if (!clientName.value.trim()) {
     errorMessage.value = 'Укажите ваше имя.'
     return
@@ -135,22 +176,32 @@ async function submitBooking(): Promise<void> {
     errorMessage.value = 'Выберите время записи.'
     return
   }
+  const startsAt = selectedStartsAt.value
+  const bookedServices = selectedServices.value.map((s) => s.title)
+  const durationMinutes = totalDurationMinutes.value
+  const priceRub = hasPrice.value ? totalPriceRub.value : null
+  const name = clientName.value.trim()
+
   submitLoading.value = true
   try {
-    const { data } = await publicHttp.post<{ message: string }>(
-      `/public/book/${encodeURIComponent(slug.value)}/appointments`,
-      {
-        client_name: clientName.value.trim(),
-        service_ids: serviceIds.value,
-        starts_at: selectedStartsAt.value,
-        comment: comment.value.trim() || null,
-      },
-    )
-    successMessage.value = data.message || 'Запись оформлена.'
-    clientName.value = ''
-    comment.value = ''
-    selectedStartsAt.value = ''
-    await loadSlots()
+    const { data } = await publicHttp.post<{
+      message: string
+      appointment: { starts_at: string; ends_at: string }
+    }>(`/public/book/${encodeURIComponent(slug.value)}/appointments`, {
+      client_name: name,
+      service_ids: serviceIds.value,
+      starts_at: startsAt,
+      comment: comment.value.trim() || null,
+    })
+
+    bookingConfirmation.value = {
+      clientName: name,
+      dateLabel: formatBookingDate(data.appointment.starts_at),
+      timeLabel: formatBookingTimeRange(data.appointment.starts_at, data.appointment.ends_at),
+      services: bookedServices,
+      durationMinutes,
+      priceRub,
+    }
   } catch (e: unknown) {
     if (axios.isAxiosError(e)) {
       const body = e.response?.data as { message?: string }
@@ -187,14 +238,52 @@ async function submitBooking(): Promise<void> {
         <h1 class="text-2xl font-semibold text-white">{{ ownerName }}</h1>
         <p class="mt-1 text-sm text-slate-400">Выберите услуги и удобное время</p>
 
-        <p v-if="successMessage" class="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-950/30 px-4 py-3 text-sm text-emerald-300">
-          {{ successMessage }}
-        </p>
         <p v-if="errorMessage" class="mt-4 rounded-lg border border-red-500/30 bg-red-950/30 px-4 py-3 text-sm text-red-300">
           {{ errorMessage }}
         </p>
 
-        <form class="mt-8 space-y-6" @submit.prevent="submitBooking">
+        <div
+          v-if="bookingConfirmation"
+          class="mt-8 rounded-xl border border-emerald-500/35 bg-gradient-to-br from-emerald-950/40 to-slate-900/50 p-6 shadow-lg"
+        >
+          <h2 class="text-lg font-semibold text-emerald-100">Запись оформлена</h2>
+          <p class="mt-1 text-sm text-emerald-200/80">
+            {{ bookingConfirmation.clientName }}, ждём вас у {{ ownerName }}.
+          </p>
+          <dl class="mt-5 space-y-3 text-sm">
+            <div class="flex flex-col gap-0.5 sm:flex-row sm:gap-4">
+              <dt class="shrink-0 text-slate-500 sm:w-28">Дата</dt>
+              <dd class="capitalize text-white">{{ bookingConfirmation.dateLabel }}</dd>
+            </div>
+            <div class="flex flex-col gap-0.5 sm:flex-row sm:gap-4">
+              <dt class="shrink-0 text-slate-500 sm:w-28">Время</dt>
+              <dd class="text-white">{{ bookingConfirmation.timeLabel }}</dd>
+            </div>
+            <div class="flex flex-col gap-0.5 sm:flex-row sm:gap-4">
+              <dt class="shrink-0 text-slate-500 sm:w-28">Услуги</dt>
+              <dd class="text-white">{{ bookingConfirmation.services.join(' + ') }}</dd>
+            </div>
+            <div class="flex flex-col gap-0.5 sm:flex-row sm:gap-4">
+              <dt class="shrink-0 text-slate-500 sm:w-28">Длительность</dt>
+              <dd class="text-white">{{ bookingConfirmation.durationMinutes }} мин</dd>
+            </div>
+            <div v-if="bookingConfirmation.priceRub != null" class="flex flex-col gap-0.5 sm:flex-row sm:gap-4">
+              <dt class="shrink-0 text-slate-500 sm:w-28">Стоимость</dt>
+              <dd class="font-medium text-white">
+                ~{{ bookingConfirmation.priceRub.toLocaleString('ru-RU') }} ₽
+              </dd>
+            </div>
+          </dl>
+          <button
+            type="button"
+            class="mt-6 rounded-lg border border-white/20 px-4 py-2 text-sm text-white hover:bg-white/5"
+            @click="startNewBooking"
+          >
+            Записаться ещё раз
+          </button>
+        </div>
+
+        <form v-else class="mt-8 space-y-6" @submit.prevent="submitBooking">
           <div class="rounded-xl border border-white/10 bg-slate-900/40 p-5">
             <label class="text-xs text-slate-400">Ваше имя</label>
             <input
@@ -212,12 +301,20 @@ async function submitBooking(): Promise<void> {
             <Multiselect
               v-else
               :model-value="serviceIds"
-              mode="multiple"
-              :options="services.map((s) => ({ value: s.id, label: s.title }))"
+              mode="tags"
+              class="sb-multiselect mt-2"
+              :options="services"
+              value-prop="id"
+              label="title"
+              track-by="id"
+              placeholder="Выберите одну или несколько услуг"
+              no-options-text="Нет услуг"
+              no-results-text="Ничего не найдено"
               :close-on-select="false"
               :searchable="services.length > 5"
-              placeholder="Выберите одну или несколько услуг"
-              class="mt-2 sb-multiselect"
+              :can-clear="true"
+              :create-tag="false"
+              :create-option="false"
               @update:model-value="onServiceIdsUpdate"
             />
             <p
@@ -295,11 +392,27 @@ async function submitBooking(): Promise<void> {
 <style src="@vueform/multiselect/themes/default.css"></style>
 <style>
 .sb-multiselect {
+  --ms-font-size: 0.875rem;
+  --ms-line-height: 1.375;
+  --ms-radius: 0.5rem;
   --ms-bg: rgb(2 6 23);
   --ms-border-color: rgb(255 255 255 / 0.1);
-  --ms-tag-bg: rgb(79 70 229);
-  --ms-option-bg-selected: rgb(79 70 229);
-  --ms-dropdown-bg: rgb(2 6 23);
-  --ms-font-size: 0.875rem;
+  --ms-border-color-active: rgba(99 102 241 / 0.45);
+  --ms-py: 0.35rem;
+  --ms-px: 0.5rem;
+  --ms-placeholder-color: rgb(100 116 139);
+  --ms-max-height: 12rem;
+  --ms-dropdown-bg: rgb(15 23 42);
+  --ms-dropdown-border-color: rgb(255 255 255 / 0.1);
+  --ms-option-bg-pointed: rgba(255 255 255 / 0.06);
+  --ms-option-color-pointed: rgb(241 245 249);
+  --ms-option-bg-selected: rgb(99 102 241);
+  --ms-option-color-selected: rgb(255 255 255);
+  --ms-tag-bg: rgb(67 56 202);
+  --ms-tag-color: rgb(238 242 255);
+  --ms-tag-radius: 0.375rem;
+  --ms-tag-font-weight: 500;
+  --ms-tag-font-size: 0.8125rem;
+  color: rgb(248 250 252);
 }
 </style>

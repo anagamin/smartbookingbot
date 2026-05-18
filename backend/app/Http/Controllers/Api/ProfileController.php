@@ -3,7 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Appointment;
 use App\Models\Master;
+use App\Models\Service;
+use App\Models\User;
+use App\Models\WorkingHour;
 use App\Support\BookingSlug;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -45,16 +49,10 @@ class ProfileController extends Controller
             ], 422);
         }
 
-        if (array_key_exists('business_mode', $data)) {
-            $newMode = $data['business_mode'];
-            if ($newMode === 'solo' && $user->masters()->count() > 1) {
-                return response()->json([
-                    'message' => 'Перед переключением на «частный мастер» оставьте в списке только одного мастера.',
-                ], 422);
-            }
-        }
-
         DB::transaction(function () use ($user, $data): void {
+            if (array_key_exists('business_mode', $data) && $data['business_mode'] === 'solo') {
+                $this->consolidateMastersForSolo($user);
+            }
             if (array_key_exists('name', $data) && ($user->business_mode ?? 'solo') !== 'salon') {
                 $primary = $user->masters()->orderBy('sort_order')->orderBy('id')->first();
                 if ($primary !== null) {
@@ -80,5 +78,23 @@ class ProfileController extends Controller
         return response()->json([
             'user' => $user->cabinetPayload(),
         ]);
+    }
+
+    private function consolidateMastersForSolo(User $user): void
+    {
+        $masters = $user->masters()->orderBy('sort_order')->orderBy('id')->get();
+        if ($masters->count() <= 1) {
+            return;
+        }
+
+        $primary = $masters->first();
+        foreach ($masters->skip(1) as $extra) {
+            Service::query()->where('master_id', $extra->id)->update(['master_id' => $primary->id]);
+            WorkingHour::query()->where('master_id', $extra->id)->update(['master_id' => $primary->id]);
+            Appointment::query()->where('master_id', $extra->id)->update(['master_id' => $primary->id]);
+            $extra->delete();
+        }
+
+        $user->update(['name' => $primary->name]);
     }
 }

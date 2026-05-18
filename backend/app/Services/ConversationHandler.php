@@ -122,9 +122,9 @@ class ConversationHandler
         $masterContext = $this->resolveMasterFromContext($owner, $session, $ai);
 
         $resolved = $this->resolveServicesFromContext($owner, $session, $ai, $masterContext);
-        $mastersForServices = $this->slots->resolveMastersForServices($owner, $resolved);
+        $mastersForServices = $this->slots->resolveMastersForAvailability($owner, $resolved);
 
-        if ($mastersForServices->count() > 1 && $masterContext === null) {
+        if ($owner->isSalon() && $mastersForServices->count() > 1 && $masterContext === null) {
             return $this->buildAskMasterMessage($owner, $resolved);
         }
 
@@ -174,6 +174,10 @@ class ConversationHandler
         } elseif ($resolved->isNotEmpty() && $mastersForServices->count() > 1 && $master === null) {
             $suggestions = $this->slots->suggestSlotsForServices($owner, $resolved, 14, 48);
         } else {
+            $suggestions = $this->slots->suggestSlots($owner, $singleService, 14, 24, $durationOverride, $master);
+        }
+
+        if ($suggestions === [] && $date !== null && $time === null) {
             $suggestions = $this->slots->suggestSlots($owner, $singleService, 14, 24, $durationOverride, $master);
         }
 
@@ -273,9 +277,24 @@ class ConversationHandler
             'appointment_id' => $appointment->id,
         ]);
 
-        $masterNote = $master !== null ? ' к '.$master->name : '';
+        return $this->formatBookingConfirmationMessage($owner, $start, $services, $master);
+    }
 
-        return 'Запись зафиксирована на '.$start->translatedFormat('j F Y, H:i').$masterNote.'. Ждём вас!';
+    /**
+     * @param  Collection<int, Service>  $services
+     */
+    private function formatBookingConfirmationMessage(User $owner, Carbon $start, Collection $services, ?Master $master): string
+    {
+        $message = 'Запись зафиксирована на '.$start->translatedFormat('j F Y, H:i');
+        $titles = $services->pluck('title')->filter()->values();
+        if ($titles->isNotEmpty()) {
+            $message .= ' на '.$titles->implode(', ');
+        }
+        if ($owner->isSalon() && $master !== null) {
+            $message .= ' к '.$master->name;
+        }
+
+        return $message.'. Ждём вас!';
     }
 
     /**

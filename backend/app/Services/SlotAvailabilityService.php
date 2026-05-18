@@ -37,7 +37,7 @@ class SlotAvailabilityService
             );
         }
 
-        $masters = $this->resolveMastersForServices($user, $service !== null ? collect([$service]) : collect());
+        $masters = $this->resolveMastersForAvailability($user, $service !== null ? collect([$service]) : collect());
 
         if ($masters->count() <= 1) {
             $single = $masters->first() ?? $user->primaryMaster();
@@ -93,7 +93,7 @@ class SlotAvailabilityService
             return $this->suggestSlots($user, $singleService, $daysAhead, $maxSuggestions, $durationOverride, $master);
         }
 
-        $masters = $this->resolveMastersForServices($user, $services);
+        $masters = $this->resolveMastersForAvailability($user, $services);
 
         if ($masters->count() === 1) {
             return $this->suggestSlots($user, $singleService, $daysAhead, $maxSuggestions, $durationOverride, $masters->first());
@@ -127,7 +127,7 @@ class SlotAvailabilityService
         ?int $durationMinutesOverride,
     ): array {
         $duration = $durationMinutesOverride ?? $service?->duration_minutes ?? 60;
-        $working = WorkingHour::query()->where('master_id', $master->id)->get()->groupBy('weekday');
+        $working = $this->workingHoursForMaster($user, $master)->groupBy('weekday');
         $appointments = $this->appointmentsForMaster($master);
 
         $from = $rangeStart->copy()->startOfDay();
@@ -205,6 +205,12 @@ class SlotAvailabilityService
      */
     public function resolveMastersForServices(User $user, Collection $services): Collection
     {
+        if ($user->isSolo()) {
+            $primary = $user->primaryMaster();
+
+            return $primary !== null ? collect([$primary]) : collect();
+        }
+
         if ($services->isEmpty()) {
             return $user->masters()->orderBy('sort_order')->orderBy('id')->get();
         }
@@ -222,6 +228,59 @@ class SlotAvailabilityService
             ->whereIn('id', $masterIds->all())
             ->orderBy('sort_order')
             ->orderBy('id')
+            ->get();
+    }
+
+    /**
+     * Мастера для подбора слотов: в solo — один основной; в салоне — с графиком, с запасным вариантом если у услуги неверный master_id.
+     *
+     * @param  Collection<int, Service>  $services
+     * @return Collection<int, Master>
+     */
+    public function resolveMastersForAvailability(User $user, Collection $services): Collection
+    {
+        $masters = $this->resolveMastersForServices($user, $services);
+        $withSchedule = $masters->filter(fn (Master $m) => $this->masterHasWorkingHours($user, $m))->values();
+
+        if ($withSchedule->isNotEmpty()) {
+            return $withSchedule;
+        }
+
+        $anyWithSchedule = $user->masters()
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->filter(fn (Master $m) => $this->masterHasWorkingHours($user, $m))
+            ->values();
+
+        return $anyWithSchedule->isNotEmpty() ? $anyWithSchedule : $masters;
+    }
+
+    public function masterHasWorkingHours(User $user, Master $master): bool
+    {
+        if (WorkingHour::query()->where('master_id', $master->id)->exists()) {
+            return true;
+        }
+
+        return WorkingHour::query()
+            ->where('user_id', $user->id)
+            ->whereNull('master_id')
+            ->exists();
+    }
+
+    /**
+     * @return Collection<int, WorkingHour>
+     */
+    private function workingHoursForMaster(User $user, Master $master): Collection
+    {
+        $hours = WorkingHour::query()->where('master_id', $master->id)->get();
+        if ($hours->isNotEmpty()) {
+            return $hours;
+        }
+
+        return WorkingHour::query()
+            ->where('user_id', $user->id)
+            ->whereNull('master_id')
             ->get();
     }
 
@@ -329,10 +388,8 @@ class SlotAvailabilityService
         }
 
         $weekday = (int) $start->dayOfWeek;
-        $rows = WorkingHour::query()
-            ->where('master_id', $master->id)
-            ->where('weekday', $weekday)
-            ->get();
+        $rows = $this->workingHoursForMaster($user, $master)
+            ->where('weekday', $weekday);
         if ($rows->isEmpty()) {
             return false;
         }
